@@ -15,8 +15,8 @@ import string
 from utils import load_instances, load_dictionary_from_file, _process_regex_dict
 
 logger = logging.getLogger(__name__)
-EMOTICONS_REGEX = _process_regex_dict(load_dictionary_from_file('./separators.yaml'), regex_escape=True)
-EMOTICONS_TOKEN = _process_regex_dict(load_dictionary_from_file('./separators.yaml'))
+EMOTICONS_REGEX = _process_regex_dict(load_dictionary_from_file('./emoticons.yaml'), regex_escape=True)
+EMOTICONS_TOKEN = _process_regex_dict(load_dictionary_from_file('./emoticons.yaml'))
 STOPWORDS = set(stopwords.words('english') + ["'s", "one", "use", "would", "get", "also"])
 SPECIAL_TOKEN = {"n't": 'not'}
 
