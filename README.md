@@ -9,7 +9,7 @@ Python 3.5.2 is the main language used in this codebase.
 
 I strongly encourage the use of Python [virtual environments](http://docs.python-guide.org/en/latest/dev/virtualenvs/):
 
-    virtualenv venv -p /Users/{your_own_user_name}/.pyenv/versions/3.5.2/bin/pythons
+    virtualenv venv -p /Users/{your_own_user_name}/.pyenv/versions/3.5.2/bin/python3.5
     source venv/bin/activate
 
 After which, simply install all the required python modules via
