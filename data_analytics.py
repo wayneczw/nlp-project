@@ -152,42 +152,6 @@ def top_n_words(df_series, stem=False, n=20):
 
 
 def tokenize(text, lower=True, remove_punc=True, stopwords=True, keep_emo=True, unique=True, freq=True, **kwargs):
-    
-    def _verify_emoticon(tmp_token, token):
-        return (tmp_token + token) in EMOTICONS_TOKEN
-    #end def
-
-    def _emoticons_detection(tokenized_list):
-        new_tokenized_list = list()
-        n = len(tokenized_list)
-        i = 0
-        while i < n:
-            token = tokenized_list[i]
-            if len(token) != 1:
-                new_tokenized_list.append(token)
-            else:
-                tmp_token = token
-                for k in range(i+1, n):
-                    i += 1
-                    token = tokenized_list[k]
-                    if (len(token) == 1) & (k != (n - 1)):
-                        tmp_token += token
-                    else:
-                        if _verify_emoticon(tmp_token, token):
-                            new_tokenized_list.append(tmp_token + token)
-                        else:
-                            new_tokenized_list.append(tmp_token)
-                            new_tokenized_list.append(token)
-                        #end if
-                        break
-                    #end if
-                #end for
-            #end if
-            i += 1
-        #end while
-        return new_tokenized_list
-    #end def
-    
     sentences = seg_sentences(text, freq=False)
 
     t = list()
@@ -230,6 +194,49 @@ def tokenize_and_stem(text, unique=True, freq=True, **kwargs):
 #end def
 
 
+def _emoticons_detection(tokenized_list, flag=False):
+    def _verify_emoticon(tmp_token, token):
+        return (tmp_token + token) in EMOTICONS_TOKEN
+    #end def
+
+    new_tokenized_list = list()
+    n = len(tokenized_list)
+    i = 0
+    emoticons_detected = False
+    while i < n:
+        token = tokenized_list[i]
+        if len(token) != 1:
+            new_tokenized_list.append(token)
+        else:
+            tmp_token = token
+            for k in range(i+1, n):
+                i += 1
+                token = tokenized_list[k]
+                if (len(token) == 1) & (k != (n - 1)):
+                    tmp_token += token
+                    if _verify_emoticon(tmp_token, ''):
+                        emoticons_detected = True
+                else:
+                    if _verify_emoticon(tmp_token, token):
+                        new_tokenized_list.append(tmp_token + token)
+                        emoticons_detected = True
+                    else:
+                        new_tokenized_list.append(tmp_token)
+                        new_tokenized_list.append(token)
+                    #end if
+                    break
+                #end if
+            #end for
+        #end if
+        i += 1
+    #end while
+    if not flag:
+        return new_tokenized_list
+    else:
+        return (new_tokenized_list, emoticons_detected)
+#end def
+
+
 def seg_sentences(text, freq=True):
     # sentences = regex.split(r'[.?!]\s+|\.+\s+', text)
     text = regex.sub(r'\.(?=[^ \W\d])', '. ', text)
@@ -237,10 +244,33 @@ def seg_sentences(text, freq=True):
     text = regex.sub(r'\?(?=[^ \W\d])', '? ', text)
 
     sentences = sent_tokenize(text)
+    new_sentences = list()
+    for i in range(len(sentences)):
+        tmp_sentence_list = list()
+        tokenized = TreebankWordTokenizer().tokenize(sentences[i])
+        tokenized = [SPECIAL_TOKEN[token] if SPECIAL_TOKEN.get(token, '') else token for token in tokenized]
+        
+        t, emoticons_detected = _emoticons_detection(tokenized, flag=True)
+        if emoticons_detected:
+            for i in range(len(t)):
+                if (t[i] in EMOTICONS_TOKEN):
+                    try:
+                        if t[i+1][0].isupper():
+                            t[i] = t[i] + '.'
+                    except IndexError:
+                        pass
+                    #end try
+                #end if
+            #end for
+            tmp_sentences = ' '.join(t)
+            new_sentences += sent_tokenize(tmp_sentences)
+        else:
+            new_sentences.append(sentences[i])
+                    
     if freq:
-        return len([sentence for sentence in sentences if sentence])
+        return len([sentence for sentence in new_sentences if sentence])
     else:
-        return sentences
+        return new_sentences
 #end def
        
 
