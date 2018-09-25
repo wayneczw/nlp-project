@@ -157,6 +157,7 @@ def tokenize(text, lower=True, remove_punc=True, stopwords=True, keep_emo=True, 
     t = list()
     for s in sentences:
         tokenized = TreebankWordTokenizer().tokenize(s)
+        print(tokenized)
         tokenized = [SPECIAL_TOKEN[token] if SPECIAL_TOKEN.get(token, '') else token for token in tokenized]
         if lower:
             tokenized = [token.lower() for token in tokenized]
