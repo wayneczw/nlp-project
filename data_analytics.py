@@ -17,7 +17,7 @@ from utils import load_instances, load_dictionary_from_file, _process_regex_dict
 logger = logging.getLogger(__name__)
 EMOTICONS_REGEX = _process_regex_dict(load_dictionary_from_file('./emoticons.yaml'), regex_escape=True)
 EMOTICONS_TOKEN = _process_regex_dict(load_dictionary_from_file('./emoticons.yaml'))
-STOPWORDS = set(stopwords.words('english') + ["'s", "one", "use", "would", "get", "also"])
+STOPWORDS = set(stopwords.words('english') + ["'s", "one", "use", "would", "get", "also"]) - {'not', 'no', 'won', 'more', 'above', 'very', 'against', 'again'}
 SPECIAL_TOKEN = {"n't": 'not'}
 
 def main():
@@ -157,7 +157,7 @@ def tokenize(text, lower=True, remove_punc=True, stopwords=True, keep_emo=True, 
     t = list()
     for s in sentences:
         tokenized = TreebankWordTokenizer().tokenize(s)
-        print(tokenized)
+
         tokenized = [SPECIAL_TOKEN[token] if SPECIAL_TOKEN.get(token, '') else token for token in tokenized]
         if lower:
             tokenized = [token.lower() for token in tokenized]
