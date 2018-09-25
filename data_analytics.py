@@ -188,7 +188,8 @@ def tokenize(text, lower=True, remove_punc=True, stopwords=True, keep_emo=True, 
         return new_tokenized_list
     #end def
     
-    sentences = sent_tokenize(text)
+    sentences = seg_sentences(text, freq=False)
+
     t = list()
     for s in sentences:
         tokenized = TreebankWordTokenizer().tokenize(s)
@@ -229,10 +230,17 @@ def tokenize_and_stem(text, unique=True, freq=True, **kwargs):
 #end def
 
 
-def seg_sentences(text):
+def seg_sentences(text, freq=True):
     # sentences = regex.split(r'[.?!]\s+|\.+\s+', text)
+    text = regex.sub(r'\.(?=[^ \W\d])', '. ', text)
+    text = regex.sub(r'\!(?=[^ \W\d])', '! ', text)
+    text = regex.sub(r'\?(?=[^ \W\d])', '? ', text)
+
     sentences = sent_tokenize(text)
-    return len([sentence for sentence in sentences if sentence])
+    if freq:
+        return len([sentence for sentence in sentences if sentence])
+    else:
+        return sentences
 #end def
        
 
