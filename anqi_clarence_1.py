@@ -28,6 +28,7 @@ data_path = './data/CellPhoneReview.json'
 images_path = './images'
 check_dir(images_path)
 
+flatten = lambda l: [item for sublist in l for item in sublist]
 
 # load data
 data = []
@@ -69,6 +70,8 @@ data_df['reviewerID'].value_counts().head(10).reset_index().rename(columns = {'i
 # B. Sentence Segmentation
 data_df['reviewSentenceTokenized'] = data_df['reviewText'].apply(lambda text: nltk.tokenize.sent_tokenize(text))
 random_5_sentences = pd.Series(flatten(data_df['reviewSentenceTokenized'])).sample(5, random_state=5)
+pd.Series(flatten(data_df['reviewSentenceTokenized'])).sample(5, random_state=5)
+
 random_5_df = pd.DataFrame(random_5_sentences, columns = ['Sentence']).reset_index().drop(columns = ['index'])
 random_5_df
 
