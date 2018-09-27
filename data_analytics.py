@@ -10,6 +10,7 @@ from nltk.tokenize import sent_tokenize, word_tokenize, TreebankWordTokenizer
 import numpy as np
 import pandas as pd
 pd.set_option('display.max_colwidth', -1)
+pd.set_option('display.max_columns', 10)
 import random
 import regex
 import string
@@ -45,11 +46,15 @@ def main():
     # set seed
     np.random.seed(7)
 
-    # pandas settings
-    pd.set_option('display.max_columns', 10)
-
     # load in a pd.df
     df = load_instances(A.data)
+
+    # data = []
+    # import json
+    # with open('data/CellPhoneReview.json') as f:
+    #     for line in f:
+    #         data.append(json.loads(line))
+    # df = pd.DataFrame.from_dict(data)
 
     # make directory for images
     if not os.path.exists(IMAGES_DIRECTORY):
@@ -105,18 +110,18 @@ def main():
     print('3.2.2 Sentence Segmentation')
 
     print(str(datetime.datetime.now()).split('.')[0] + ': Start processing sentence segmentation')
-    df['SegmentedSentences'] = df['reviewText'].apply(seg_sentences, freq=False)
+    df['SegmentedSentences'] = df['reviewText'].apply(seg_sentences)
     df['SentenceCount'] = df['SegmentedSentences'].apply(lambda sentences: len(sentences))
     print(str(datetime.datetime.now()).split('.')[0] + ': Finish processing sentence segmentation')
 
     # plotting for number of sentences
-    plot_bar(df['SentenceCount'].clip(0, 50), \
-            title = 'Distribution of Number of Sentences for Each Review (Clipped)', \
-            x_label = "Sentence Count (Clipped)", y_label = "Review Count")
-
     plot_bar(df['SentenceCount'], \
             title = 'Distribution of Number of Sentences for Each Review', \
-            x_label = "Sentence Count (Clipped)", y_label = "Review Count")
+            x_label = "Sentence Count", y_label = "Review Count", countplot = False)
+
+    plot_bar(df['SentenceCount'].clip(0, 50), \
+            title = 'Distribution of Number of Sentences for Each Review (Clipped)', \
+            x_label = "Sentence Count (Clipped)", y_label = "Review Count", countplot = True, mark = True)
 
     print()
 
@@ -133,7 +138,10 @@ def main():
 
     plot_bar(df['WordCount'], \
             title = 'Distribution of Number of Words for Each Review Without Stemming', \
-            x_label = "Word Count", y_label = "Review Count")
+            x_label = "Word Count", y_label = "Review Count", countplot = False)
+    plot_bar(df['WordCount'].clip(0, 300), \
+            title = 'Distribution of Number of Words for Each Review Without Stemming (Clipped)', \
+            x_label = "Word Count (Clipped)", y_label = "Review Count", countplot = False, mark = False)
 
     tokenized_word_list = flatten(df['TokenizedWord'])
     top_20_words = pd.DataFrame.from_dict(Counter(tokenized_word_list), orient='index').\
@@ -159,7 +167,10 @@ def main():
 
     plot_bar(df['StemmedWordCount'], \
             title = 'Distribution of Number of Words for Each Review With Stemming', \
-            x_label = "Word Count", y_label = "Review Count")
+            x_label = "Stemmed Word Count", y_label = "Review Count", countplot = False)
+    plot_bar(df['WordCount'].clip(0, 300), \
+            title = 'Distribution of Number of Words for Each Review With Stemming (Clipped)', \
+            x_label = "Word Count (Clipped)", y_label = "Review Count", countplot = False, mark = False)
 
     stemmed_tokenized_word_list = flatten(df['StemmedTokenizedWord'])
     stemmed_top_20_words = pd.DataFrame.from_dict(Counter(stemmed_tokenized_word_list), orient='index').\
@@ -258,7 +269,7 @@ def _emoticons_detection(tokenized_list, flag=False):
 #end def
 
 
-def seg_sentences(text, freq=True):
+def seg_sentences(text):
     # sentences = regex.split(r'[.?!]\s+|\.+\s+', text)
     text = regex.sub(r'\.(?=[^ \W\d])', '. ', text)
     text = regex.sub(r'\!(?=[^ \W\d])', '! ', text)
@@ -288,22 +299,26 @@ def seg_sentences(text, freq=True):
         else:
             new_sentences.append(sentences[i])
 
-    if freq:
-        return len([sentence for sentence in new_sentences if sentence])
-    else:
-        return new_sentences
+    return new_sentences
 #end def
 
-def plot_bar(number_list, title, x_label, y_label):
+def plot_bar(number_list, title, x_label, y_label, countplot = True, mark = True):
     sns.set(font_scale = 1.5)
-    fig = sns.countplot(number_list, color = 'c')
-    for p in fig.patches:
-        height = int(p.get_height())
-        if height != 0:
-            fig.text(p.get_x()+p.get_width()/2.,
-                    height * 1.01,
-                    height,
-                    ha="center", fontsize = 15)
+
+    if countplot:
+        fig = sns.countplot(number_list, color = 'c')
+    else:
+        fig = sns.distplot(number_list, color = 'c', kde = False)
+
+    if mark:
+        for p in fig.patches:
+            height = int(p.get_height())
+            if height != 0:
+                fig.text(p.get_x()+p.get_width()/2.,
+                        height * 1.01,
+                        height,
+                        ha="center", fontsize = 15)
+
     plt.title(title, loc = 'center', y=1.08, fontsize = 30)
     fig.set_xlabel(x_label)
     fig.set_ylabel(y_label)

@@ -1,7 +1,9 @@
+import numpy as np
 import json
 import os
 import nltk
 import pandas as pd
+from collections import Counter
 pd.set_option('display.max_colwidth', -1)
 
 import matplotlib.pyplot as plt
@@ -66,6 +68,13 @@ data_df['reviewerID'].value_counts().head(10).reset_index().rename(columns = {'i
 
 # B. Sentence Segmentation
 data_df['reviewSentenceTokenized'] = data_df['reviewText'].apply(lambda text: nltk.tokenize.sent_tokenize(text))
+random_5_sentences = pd.Series(flatten(data_df['reviewSentenceTokenized'])).sample(5, random_state=5)
+random_5_df = pd.DataFrame(random_5_sentences, columns = ['Sentence']).reset_index().drop(columns = ['index'])
+random_5_df
+
+
+
+
 data_df['numSentences'] = data_df['reviewSentenceTokenized'].apply(lambda text: len(text))
 data_df['numSentences'].value_counts().head(10)
 
@@ -92,7 +101,8 @@ saved_path = os.path.join(images_path, title.lower().replace(' ', '_'))
 fig.get_figure().savefig(saved_path, dpi=200, bbox_inches="tight")
 
 
-
+import datetime
+str(datetime.datetime.now()).split('.')[0]
 sns.set(font_scale = 2)
 fig = sns.distplot(data_df['reviewSentenceCount'], kde = False,color = 'c')
 title = 'Distribution of Number of Sentences for Each Review'
@@ -109,6 +119,11 @@ data_df['reviewWordTokenized'] = data_df['reviewText'].apply(lambda text: nltk.t
 data_df['reviewWordCount'] = data_df['reviewWordTokenized'].apply(lambda text: len(text))
 data_df[['reviewWordTokenized','reviewWordCount']].sort_values(['reviewWordCount'], ascending = False).head()
 data_df[['reviewWordTokenized','reviewWordCount']].head()
+
+num_list = ['1', '2', '3', '3', '4']
+Counter(num_list).items
+pd.DataFrame.from_dict(Counter(num_list), orient='index').reset_index().rename(columns = {'index': 'Word', 0: 'Count'}).sort_values(['Count'], ascending = False).head(10).reset_index().drop(columns = ['index'])
+data_df.sample(5, random_state = 5)
 
 sns.distplot(data_df['reviewWordCount'])
 data_df['reviewWordCount'].iplot(kind = 'hist')
