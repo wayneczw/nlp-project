@@ -1,4 +1,5 @@
 import json
+import os
 import nltk
 import pandas as pd
 pd.set_option('display.max_colwidth', -1)
@@ -9,13 +10,22 @@ import seaborn as sns
 # %matplotlib inline
 plt.style.use('seaborn-whitegrid')
 plt.rcParams['savefig.facecolor']='white'
-params = {'figure.figsize': (12,8),
+params = {'figure.figsize': (20,15),
             'axes.titlesize': 20}
 plt.rcParams.update(params)
 import plotly
 import cufflinks as cf
 
+def check_dir(directory):
+    if not os.path.exists(directory):
+        check_dir(os.path.dirname(directory))
+        os.mkdir(directory)
+        print("{:<6} Make directory: {}".format('[INFO]', directory))
+
 data_path = './data/CellPhoneReview.json'
+images_path = './images'
+check_dir(images_path)
+
 
 # load data
 data = []
@@ -24,7 +34,7 @@ with open(data_path) as f:
         data.append(json.loads(line))
 
 data_df = pd.DataFrame.from_dict(data)
-data_df = data_df.sample(10000)
+# data_df = data_df.sample(10000)
 
 # # check data
 # data_df.shape
@@ -61,9 +71,35 @@ data_df[data_df['reviewText'].str.contains(':\)')][['reviewSentenceTokenized','r
 data_df[data_df['reviewText'].str.contains('..')][['reviewText','reviewSentenceTokenized','reviewSentenceCount']]
 data_df[['reviewText','reviewSentenceTokenized','reviewSentenceCount']].sort_values(['reviewSentenceCount'], ascending = False).head()
 
-sns.distplot(data_df['reviewSentenceCount'])
-data_df['reviewSentenceCount'].iplot(kind = 'hist')
-data_df['reviewSentenceCount'].clip(0,100).iplot(kind = 'hist')
+# plotting for number of sentences
+sns.set(font_scale = 1.5)
+fig = sns.countplot(data_df['reviewSentenceCount'].clip(0, 50), color = 'c')
+for p in fig.patches:
+    height = int(p.get_height())
+    if height != 0:
+        fig.text(p.get_x()+p.get_width()/2.,
+                height + 140,
+                height,
+                ha="center", fontsize = 15)
+title = 'Distribution of Number of Sentences for Each Review (Clipped)'
+plt.title(title, loc = 'center', y=1.08, fontsize = 30)
+fig.set_xlabel("Sentence Count (Clipped)")
+fig.set_ylabel("Review Count")
+plt.tight_layout()
+saved_path = os.path.join(images_path, title.lower().replace(' ', '_'))
+fig.get_figure().savefig(saved_path, dpi=200, bbox_inches="tight")
+
+
+
+sns.set(font_scale = 2)
+fig = sns.distplot(data_df['reviewSentenceCount'], kde = False,color = 'c')
+title = 'Distribution of Number of Sentences for Each Review'
+plt.title(title, loc = 'center', y=1.08, fontsize = 30)
+fig.set_xlabel("Sentence Count")
+fig.set_ylabel("Review Count")
+plt.tight_layout()
+saved_path = os.path.join(images_path, title.lower().replace(' ', '_'))
+fig.get_figure().savefig(saved_path, dpi=200, bbox_inches="tight")
 
 
 # C. Tokenization and Stemming.
