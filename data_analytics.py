@@ -49,12 +49,11 @@ def main():
     # load in a pd.df
     df = load_instances(A.data)
 
-    # data = []
-    # import json
-    # with open('data/CellPhoneReview.json') as f:
-    #     for line in f:
-    #         data.append(json.loads(line))
-    # df = pd.DataFrame.from_dict(data)
+    data = []
+    import json
+    with open('data/CellPhoneReview.json') as f:
+        for line in f:
+            data.append(json.loads(line))
 
     # make directory for images
     if not os.path.exists(IMAGES_DIRECTORY):
@@ -121,7 +120,7 @@ def main():
 
     plot_bar(df['SentenceCount'].clip(0, 50), \
             title = 'Distribution of Number of Sentences for Each Review (Clipped)', \
-            x_label = "Sentence Count (Clipped)", y_label = "Review Count", countplot = True, mark = True)
+            x_label = "Sentence Count (Clipped)", y_label = "Review Count", countplot = True)
 
     print()
 
@@ -141,7 +140,7 @@ def main():
             x_label = "Word Count", y_label = "Review Count", countplot = False)
     plot_bar(df['WordCount'].clip(0, 300), \
             title = 'Distribution of Number of Words for Each Review Without Stemming (Clipped)', \
-            x_label = "Word Count (Clipped)", y_label = "Review Count", countplot = False, mark = False)
+            x_label = "Word Count (Clipped)", y_label = "Review Count", countplot = False)
 
     tokenized_word_list = flatten(df['TokenizedWord'])
     top_20_words = pd.DataFrame.from_dict(Counter(tokenized_word_list), orient='index').\
@@ -170,7 +169,7 @@ def main():
             x_label = "Stemmed Word Count", y_label = "Review Count", countplot = False)
     plot_bar(df['WordCount'].clip(0, 300), \
             title = 'Distribution of Number of Words for Each Review With Stemming (Clipped)', \
-            x_label = "Word Count (Clipped)", y_label = "Review Count", countplot = False, mark = False)
+            x_label = "Word Count (Clipped)", y_label = "Review Count", countplot = False)
 
     stemmed_tokenized_word_list = flatten(df['StemmedTokenizedWord'])
     stemmed_top_20_words = pd.DataFrame.from_dict(Counter(stemmed_tokenized_word_list), orient='index').\
@@ -225,11 +224,11 @@ def tokenize(sentence, lower=True, remove_punc=True, stopwords=True, keep_emo=Tr
     return tokens
 #end def
 
+def _verify_emoticon(tmp_token, token):
+    return (tmp_token + token) in EMOTICONS_TOKEN
+#end def
 
 def _emoticons_detection(tokenized_list, flag=False):
-    def _verify_emoticon(tmp_token, token):
-        return (tmp_token + token) in EMOTICONS_TOKEN
-    #end def
 
     new_tokenized_list = list()
     n = len(tokenized_list)
@@ -277,9 +276,9 @@ def seg_sentences(text):
 
     sentences = sent_tokenize(text)
     new_sentences = list()
-    for i in range(len(sentences)):
+    for sentence in sentences:
         tmp_sentence_list = list()
-        tokenized = TreebankWordTokenizer().tokenize(sentences[i])
+        tokenized = TreebankWordTokenizer().tokenize(sentence)
         tokenized = [SPECIAL_TOKEN[token] if SPECIAL_TOKEN.get(token, '') else token for token in tokenized]
 
         t, emoticons_detected = _emoticons_detection(tokenized, flag=True)
@@ -297,27 +296,18 @@ def seg_sentences(text):
             tmp_sentences = ' '.join(t)
             new_sentences += sent_tokenize(tmp_sentences)
         else:
-            new_sentences.append(sentences[i])
+            new_sentences.append(sentence)
 
     return new_sentences
 #end def
 
-def plot_bar(number_list, title, x_label, y_label, countplot = True, mark = True):
+def plot_bar(number_list, title, x_label, y_label, countplot = True):
     sns.set(font_scale = 1.5)
 
     if countplot:
         fig = sns.countplot(number_list, color = 'c')
     else:
         fig = sns.distplot(number_list, color = 'c', kde = False)
-
-    if mark:
-        for p in fig.patches:
-            height = int(p.get_height())
-            if height != 0:
-                fig.text(p.get_x()+p.get_width()/2.,
-                        height * 1.01,
-                        height,
-                        ha="center", fontsize = 15)
 
     plt.title(title, loc = 'center', y=1.08, fontsize = 30)
     fig.set_xlabel(x_label)
