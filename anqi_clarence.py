@@ -5,7 +5,7 @@ import pandas as pd
 pd.set_option('display.max_colwidth', -1)
 
 import matplotlib.pyplot as plt
-import matplotlib.pylab as pylab
+# import matplotlib.pylab as pylab
 import seaborn as sns
 # %matplotlib inline
 plt.style.use('seaborn-whitegrid')
@@ -34,7 +34,7 @@ with open(data_path) as f:
         data.append(json.loads(line))
 
 data_df = pd.DataFrame.from_dict(data)
-# data_df = data_df.sample(10000)
+data_df = data_df.sample(10000)
 
 # # check data
 # data_df.shape
@@ -60,25 +60,27 @@ data_df = data_df.drop(columns = ['unixReviewTime', 'reviewTime'])
 
 # Question 3.2 -----------------------------------------------------------------
 # A. Popular Products and Frequent Reviewers
-data_df['asin'].value_counts().head(10).reset_index().rename(columns = {'index': 'productID', 'asin': 'reviewCount'})
-data_df['reviewerID'].value_counts().head(10).reset_index().rename(columns = {'index': 'reviewerID', 'asin': 'reviewCount'})
+display(data_df['asin'].value_counts().head(10).reset_index().rename(columns = {'index': 'productID', 'asin': 'reviewCount'}))
+print(data_df['asin'].value_counts().head(10).reset_index().rename(columns = {'index': 'productID', 'asin': 'reviewCount'}))
+data_df['reviewerID'].value_counts().head(10).reset_index().rename(columns = {'index': 'reviewerID', 'reviewerID': 'reviewCount'})
 
 # B. Sentence Segmentation
 data_df['reviewSentenceTokenized'] = data_df['reviewText'].apply(lambda text: nltk.tokenize.sent_tokenize(text))
-data_df['reviewSentenceCount'] = data_df['reviewSentenceTokenized'].apply(lambda text: len(text))
+data_df['numSentences'] = data_df['reviewSentenceTokenized'].apply(lambda text: len(text))
+data_df['numSentences'].value_counts().head(10)
 
-data_df[data_df['reviewText'].str.contains(':\)')][['reviewSentenceTokenized','reviewSentenceCount']]
-data_df[data_df['reviewText'].str.contains('..')][['reviewText','reviewSentenceTokenized','reviewSentenceCount']]
-data_df[['reviewText','reviewSentenceTokenized','reviewSentenceCount']].sort_values(['reviewSentenceCount'], ascending = False).head()
+# data_df[data_df['reviewText'].str.contains(':\)')][['reviewSentenceTokenized','reviewSentenceCount']]
+# data_df[data_df['reviewText'].str.contains('..')][['reviewText','reviewSentenceTokenized','reviewSentenceCount']]
+# data_df[['reviewText','reviewSentenceTokenized','reviewSentenceCount']].sort_values(['reviewSentenceCount'], ascending = False).head()
 
 # plotting for number of sentences
 sns.set(font_scale = 1.5)
-fig = sns.countplot(data_df['reviewSentenceCount'].clip(0, 50), color = 'c')
+fig = sns.countplot(data_df['numSentences'].clip(0, 50), color = 'c')
 for p in fig.patches:
     height = int(p.get_height())
     if height != 0:
         fig.text(p.get_x()+p.get_width()/2.,
-                height + 140,
+                height + 10,
                 height,
                 ha="center", fontsize = 15)
 title = 'Distribution of Number of Sentences for Each Review (Clipped)'

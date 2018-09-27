@@ -9,16 +9,32 @@ from nltk.stem.snowball import SnowballStemmer
 from nltk.tokenize import sent_tokenize, word_tokenize, TreebankWordTokenizer
 import numpy as np
 import pandas as pd
+pd.set_option('display.max_colwidth', -1)
 import random
 import regex
 import string
+import os
+import datetime
+from collections import Counter
 from utils import load_instances, load_dictionary_from_file, _process_regex_dict
+
+# library for plotting
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+import seaborn as sns
+# %matplotlib inline
+plt.style.use('seaborn-whitegrid')
+params = {'figure.figsize': (20,15),
+            'savefig.facecolor': 'white'}
+plt.rcParams.update(params)
 
 logger = logging.getLogger(__name__)
 EMOTICONS_REGEX = _process_regex_dict(load_dictionary_from_file('./emoticons.yaml'), regex_escape=True)
 EMOTICONS_TOKEN = _process_regex_dict(load_dictionary_from_file('./emoticons.yaml'))
 STOPWORDS = set(stopwords.words('english') + ["'s", "one", "use", "would", "get", "also"]) - {'not', 'no', 'won', 'more', 'above', 'very', 'against', 'again'}
 SPECIAL_TOKEN = {"n't": 'not'}
+IMAGES_DIRECTORY = './images'
 
 def main():
     parser = ArgumentParser(description='Run machine learning experiment.')
@@ -35,163 +51,167 @@ def main():
     # load in a pd.df
     df = load_instances(A.data)
 
-    ## 3.2.1 get top 10 products
-    n = 10
-    top_10_products_df = df.groupby(['asin'])['asin'].agg(
-        {"count": len}).sort_values(
-        "count", ascending=False).head(n).reset_index()
+    # make directory for images
+    if not os.path.exists(IMAGES_DIRECTORY):
+        os.mkdir(IMAGES_DIRECTORY)
 
+    ## 3.2.1 get top 10 products
+    print('=' * 50)
+    print('3.2.1 Popular Products and Frequent Reviewers')
+    top_10_products_df = df['asin'].value_counts().head(10).reset_index().rename(columns = {'index': 'productID', 'asin': 'reviewCount'})
+
+    print('=' * 30)
+    print('Top 10 products:')
+    print('-' * 30)
     display(top_10_products_df)
-    print('==========================')
-    #          asin  count
-    # 0  B005SUHPO6    836
-    # 1  B0042FV2SI    690
-    # 2  B008OHNZI0    657
-    # 3  B009RXU59C    634
-    # 4  B000S5Q9CA    627
-    # 5  B008DJIIG8    510
-    # 6  B0090YGJ4I    448
-    # 7  B009A5204K    434
-    # 8  B00BT7RAPG    431
-    # 9  B0015RB39O    424
+    print('=' * 30)
+    #     productID  reviewCount
+    # 0  B005SUHPO6          836
+    # 1  B0042FV2SI          690
+    # 2  B008OHNZI0          657
+    # 3  B009RXU59C          634
+    # 4  B000S5Q9CA          627
+    # 5  B008DJIIG8          510
+    # 6  B0090YGJ4I          448
+    # 7  B009A5204K          434
+    # 8  B00BT7RAPG          431
+    # 9  B0015RB39O          424
+
 
     ## 3.2.1 get top 10 reviewers
-    n = 10
-    top_10_reviewers_df = df.groupby(['reviewerID'])['reviewerID'].agg(
-        {"count": len}).sort_values(
-        "count", ascending=False).head(n).reset_index()
+    top_10_reviewers_df = df['reviewerID'].value_counts().head(10).reset_index().rename(columns = {'index': 'reviewerID', 'reviewerID': 'reviewCount'})
 
+    print('=' * 30)
+    print('Top 10 reviewers:')
+    print('-' * 30)
     display(top_10_reviewers_df)
-    print('==========================')
-    #        reviewerID  count
-    # 0  A2NYK9KWFMJV4Y    152
-    # 1  A22CW0ZHY3NJH8    138
-    # 2  A1EVV74UQYVKRY    137
-    # 3  A1ODOGXEYECQQ8    133
-    # 4  A2NOW4U7W3F7RI    132
-    # 5  A36K2N527TXXJN    124
-    # 6  A1UQBFCERIP7VJ    112
-    # 7   A1E1LEVQ9VQNK    109
-    # 8  A18U49406IPPIJ    109
-    # 9   AYB4ELCS5AM8P    107
+    print('=' * 30)
+    #        reviewerID  reviewCount
+    # 0  A2NYK9KWFMJV4Y          152
+    # 1  A22CW0ZHY3NJH8          138
+    # 2  A1EVV74UQYVKRY          137
+    # 3  A1ODOGXEYECQQ8          133
+    # 4  A2NOW4U7W3F7RI          132
+    # 5  A36K2N527TXXJN          124
+    # 6  A1UQBFCERIP7VJ          112
+    # 7   A1E1LEVQ9VQNK          109
+    # 8  A18U49406IPPIJ          109
+    # 9   AYB4ELCS5AM8P          107
+
+    print()
 
     ## 3.2.2 Sentence segmentation
-    df['numSentences'] = df['reviewText'].apply(seg_sentences)
-    # display(df['numSentences'])
-    # print('==========================')
+    print('=' * 50)
+    print('3.2.2 Sentence Segmentation')
+
+    print(str(datetime.datetime.now()).split('.')[0] + ': Start processing sentence segmentation')
+    df['SegmentedSentences'] = df['reviewText'].apply(seg_sentences, freq=False)
+    df['SentenceCount'] = df['SegmentedSentences'].apply(lambda sentences: len(sentences))
+    print(str(datetime.datetime.now()).split('.')[0] + ': Finish processing sentence segmentation')
+
+    # plotting for number of sentences
+    plot_bar(df['SentenceCount'].clip(0, 50), \
+            title = 'Distribution of Number of Sentences for Each Review (Clipped)', \
+            x_label = "Sentence Count (Clipped)", y_label = "Review Count")
+
+    plot_bar(df['SentenceCount'], \
+            title = 'Distribution of Number of Sentences for Each Review', \
+            x_label = "Sentence Count (Clipped)", y_label = "Review Count")
+
+    print()
 
     ## 3.2.3 Tokenization and Stemming
+    print('=' * 50)
+    print('3.2.3 Tokenization and Stemming')
     ### No Stemming, with stopwords
-    df['numTokenized'] = df['reviewText'].apply(tokenize)
-    top_20_words_dict = top_n_words(df['reviewText'], n=20)    
-    print('Top 20 Words before Stemming')
-    print('----------------------------')
-    for word, count in top_20_words_dict.items():
-        print('|{:20s}| {:6d}|'.format(word, count)) 
-    print('----------------------------')
+    print('No Stemming, with stopwords:')
+
+    print(str(datetime.datetime.now()).split('.')[0] + ': Start processing tokenizing')
+    df['TokenizedWord'] = df['SegmentedSentences'].apply(lambda sentences: flatten([tokenize(sentence, unique=False, freq=False) for sentence in sentences]))
+    df['WordCount'] = df['TokenizedWord'].apply(lambda words: len(words))
+    print(str(datetime.datetime.now()).split('.')[0] + ': Finish processing tokenizing')
+
+    plot_bar(df['WordCount'], \
+            title = 'Distribution of Number of Words for Each Review Without Stemming', \
+            x_label = "Word Count", y_label = "Review Count")
+
+    tokenized_word_list = flatten(df['TokenizedWord'])
+    top_20_words = pd.DataFrame.from_dict(Counter(tokenized_word_list), orient='index').\
+                reset_index().rename(columns = {'index': 'Word', 0: 'Count'}).\
+                sort_values(['Count'], ascending = False).head(20).\
+                reset_index().drop(columns = ['index'])
+    print('=' * 30)
+    print('Top 20 Words without Stemming')
+    print('-' * 30)
+    display(top_20_words)
+    print('=' * 30)
     print()
 
     ### With Stemming, with stopwords
-    df['numTokenizedAndStemmed'] = df['reviewText'].apply(tokenize_and_stem)
-    top_20_words_stemmed_dict = top_n_words(df['reviewText'], stem=True, n=20)    
-    print('Top 20 Words after Stemming')
-    print('----------------------------')    
-    for word, count in top_20_words_stemmed_dict.items():
-        print('|{:20s}| {:6d}|'.format(word, count)) 
-    print('----------------------------')
+    print('With Stemming, with stopwords:')
+
+    print(str(datetime.datetime.now()).split('.')[0] + ': Start processing tokenizing')
+    # df['StemmedTokenizedWord'] = df['SegmentedSentences'].apply(lambda sentences: flatten([tokenize(sentence, unique=False, freq=False, stem = True) for sentence in sentences]))
+    stemmer = SnowballStemmer("english")
+    df['StemmedTokenizedWord'] = df['TokenizedWord'].apply(lambda tokens: [stemmer.stem(token) for token in tokens])
+    df['StemmedWordCount'] = df['StemmedTokenizedWord'].apply(lambda words: len(words))
+    print(str(datetime.datetime.now()).split('.')[0] + ': Finish processing tokenizing')
+
+    plot_bar(df['StemmedWordCount'], \
+            title = 'Distribution of Number of Words for Each Review With Stemming', \
+            x_label = "Word Count", y_label = "Review Count")
+
+    stemmed_tokenized_word_list = flatten(df['StemmedTokenizedWord'])
+    stemmed_top_20_words = pd.DataFrame.from_dict(Counter(stemmed_tokenized_word_list), orient='index').\
+                reset_index().rename(columns = {'index': 'Word', 0: 'Count'}).\
+                sort_values(['Count'], ascending = False).head(20).\
+                reset_index().drop(columns = ['index'])
+    print('=' * 30)
+    print('Top 20 Words with Stemming')
+    print('-' * 30)
+    display(stemmed_top_20_words)
+    print('=' * 30)
+    print()
 
     # ## 3.2.4 POS Tagging
-    random_5 = random.sample(range(1, len(df['reviewText'])), 5)
-    random_5_df = df.iloc[random_5]
-    # df.iloc[random_5]['tokenizedReview'] = df.iloc[random_5]['reviewText'].apply(tokenize, freq=False, unique=False)
-    # df.iloc[random_5]['posTagged'] = df.iloc[random_5]['tokenizedReview'].apply(pos_tag)
-    random_5_df['tokenizedReview'] = random_5_df['reviewText'].apply(tokenize, freq=False, unique=False)
-    random_5_df['posTagged'] = random_5_df['tokenizedReview'].apply(pos_tag)
-    display(random_5_df['posTagged'])
+    print('=' * 50)
+    print('3.2.4 POS Tagging')
+    random_5_sentences = pd.Series(flatten(df['SegmentedSentences'])).sample(5, random_state=5)
+    random_5_df = pd.DataFrame(random_5_sentences, columns = ['Sentence']).reset_index().drop(columns = ['index'])
+    random_5_df['TokenizedSentence'] = random_5_df['Sentence'].apply(tokenize, unique=False, freq=False, stopwords = False)
+    random_5_df['PosTagged'] = random_5_df['TokenizedSentence'].apply(pos_tag)
+    print('=' * 30)
+    display(random_5_df)
     print('==========================')
 #end def
 
 
-def top_n_words(df_series, stem=False, n=20):
-    words_dict = dict()
-    if stem:
-        for review in df_series:
-            tokenized_review = tokenize_and_stem(review, unique=False, freq=False)
-            for token in tokenized_review:
-                try:
-                    words_dict[token] += 1
-                except KeyError:
-                    words_dict[token] = 1
-            #end for
-        #end for
+def tokenize(sentence, lower=True, remove_punc=True, stopwords=True, keep_emo=True, stem = False, **kwargs):
+
+    tokens = list()
+
+    tokenized = TreebankWordTokenizer().tokenize(sentence)
+    tokenized = [SPECIAL_TOKEN[token] if SPECIAL_TOKEN.get(token, '') else token for token in tokenized]
+
+    if lower:
+        tokenized = [token.lower() for token in tokenized]
+
+    if stopwords:
+        tokenized = [token for token in tokenized if token not in STOPWORDS]
+
+    if keep_emo:
+        tokens += _emoticons_detection(tokenized)
     else:
-        for review in df_series:
-            tokenized_review = tokenize(review, unique=False, freq=False)
-            for token in tokenized_review:
-                try:
-                    words_dict[token] += 1
-                except KeyError:
-                    words_dict[token] = 1
-            #end for
-        #end for
-    #end if
-
-    words_dict = OrderedDict(sorted(words_dict.items(), key=lambda t: t[1], reverse=True))
-    
-    i = 0
-    returned_dict = OrderedDict()
-    for word, count in words_dict.items():
-        if i < n: returned_dict[word] = count
-        else: break
-
-        i += 1
-    #end for
-
-    return returned_dict
-#end def
-
-
-def tokenize(text, lower=True, remove_punc=True, stopwords=True, keep_emo=True, unique=True, freq=True, **kwargs):
-    sentences = seg_sentences(text, freq=False)
-
-    t = list()
-    for s in sentences:
-        tokenized = TreebankWordTokenizer().tokenize(s)
-
-        tokenized = [SPECIAL_TOKEN[token] if SPECIAL_TOKEN.get(token, '') else token for token in tokenized]
-        if lower:
-            tokenized = [token.lower() for token in tokenized]
-        if stopwords:
-            tokenized = [token for token in tokenized if token not in STOPWORDS] 
-
-        if keep_emo:
-            t += _emoticons_detection(tokenized)
-        else:
-            t += tokenized
+        tokens += tokenized
 
     if remove_punc:
-        t = [token for token in t if token not in string.punctuation]
+        tokens = [token for token in tokens if token not in string.punctuation]
 
-    if unique:
-        t = set(t)
+    if stem:
+        stemmer = SnowballStemmer("english")
+        tokens = [stemmer.stem(token) for token in tokens]
 
-    if freq: return len(t)
-    else: return t
-    # return {token: t_list.count(token) for token in set(t_list)}
-#end def
-
-
-def tokenize_and_stem(text, unique=True, freq=True, **kwargs):
-    tokenized = tokenize(text, freq=False, unique=False, **kwargs)
-    stemmer = SnowballStemmer("english")
-
-    if unique:
-        t = {stemmer.stem(token) for token in tokenized}
-    else:
-        t = [stemmer.stem(token) for token in tokenized]
-
-    if freq: return len(t)
-    else: return t
+    return tokens
 #end def
 
 
@@ -250,7 +270,7 @@ def seg_sentences(text, freq=True):
         tmp_sentence_list = list()
         tokenized = TreebankWordTokenizer().tokenize(sentences[i])
         tokenized = [SPECIAL_TOKEN[token] if SPECIAL_TOKEN.get(token, '') else token for token in tokenized]
-        
+
         t, emoticons_detected = _emoticons_detection(tokenized, flag=True)
         if emoticons_detected:
             for i in range(len(t)):
@@ -267,12 +287,32 @@ def seg_sentences(text, freq=True):
             new_sentences += sent_tokenize(tmp_sentences)
         else:
             new_sentences.append(sentences[i])
-                    
+
     if freq:
         return len([sentence for sentence in new_sentences if sentence])
     else:
         return new_sentences
 #end def
-       
+
+def plot_bar(number_list, title, x_label, y_label):
+    sns.set(font_scale = 1.5)
+    fig = sns.countplot(number_list, color = 'c')
+    for p in fig.patches:
+        height = int(p.get_height())
+        if height != 0:
+            fig.text(p.get_x()+p.get_width()/2.,
+                    height * 1.01,
+                    height,
+                    ha="center", fontsize = 15)
+    plt.title(title, loc = 'center', y=1.08, fontsize = 30)
+    fig.set_xlabel(x_label)
+    fig.set_ylabel(y_label)
+    plt.tight_layout()
+    saved_path = os.path.join(IMAGES_DIRECTORY, title.lower().replace(' ', '_'))
+    fig.get_figure().savefig(saved_path, dpi=200, bbox_inches="tight")
+    print('Saved ' + saved_path)
+    plt.close()
+
+flatten = lambda l: [item for sublist in l for item in sublist]
 
 if __name__ == '__main__': main()
