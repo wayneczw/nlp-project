@@ -109,16 +109,16 @@ def main():
     print('3.2.2 Sentence Segmentation')
 
     print(str(datetime.datetime.now()).split('.')[0] + ': Start processing sentence segmentation')
-    df['SegmentedSentences'] = df['reviewText'].apply(seg_sentences)
-    df['SentenceCount'] = df['SegmentedSentences'].apply(len)
+    df['segmentedSentences'] = df['reviewText'].apply(seg_sentences)
+    df['sentenceCount'] = df['segmentedSentences'].apply(len)
     print(str(datetime.datetime.now()).split('.')[0] + ': Finish processing sentence segmentation')
 
     # plotting for number of sentences
-    plot_bar(df['SentenceCount'], \
+    plot_bar(df['sentenceCount'], \
             title = 'Distribution of Number of Sentences for Each Review', \
             x_label = "Sentence Count", y_label = "Review Count", countplot = False)
 
-    plot_bar(df['SentenceCount'].clip(0, 50), \
+    plot_bar(df['sentenceCount'].clip(0, 50), \
             title = 'Distribution of Number of Sentences for Each Review (Clipped)', \
             x_label = "Sentence Count (Clipped)", y_label = "Review Count", countplot = True)
 
@@ -131,19 +131,18 @@ def main():
     print('No Stemming, with stopwords:')
 
     print(str(datetime.datetime.now()).split('.')[0] + ': Start processing tokenizing')
-    df['TokenizedWordBySentence'] = df['SegmentedSentences'].apply(lambda sentences: [tokenize(sentence, unique=False, freq=False) for sentence in sentences])
-    df['TokenizedWordByReview'] = df['TokenizedWordBySentence'].apply(flatten)
-    df['WordCount'] = df['TokenizedWordByReview'].apply(len)
+    df['tokenizedWord'] = df['segmentedSentences'].apply(lambda sentences: flatten([tokenize(sentence, unique=False, freq=False) for sentence in sentences]))
+    df['wordCount'] = df['tokenizedWord'].apply(len)
     print(str(datetime.datetime.now()).split('.')[0] + ': Finish processing tokenizing')
 
-    plot_bar(df['WordCount'], \
+    plot_bar(df['wordCount'], \
             title = 'Distribution of Number of Words for Each Review Without Stemming', \
             x_label = "Word Count", y_label = "Review Count", countplot = False)
-    plot_bar(df['WordCount'].clip(0, 300), \
+    plot_bar(df['wordCount'].clip(0, 300), \
             title = 'Distribution of Number of Words for Each Review Without Stemming (Clipped)', \
             x_label = "Word Count (Clipped)", y_label = "Review Count", countplot = False)
 
-    tokenized_word_list = flatten(df['TokenizedWordByReview'])
+    tokenized_word_list = flatten(df['tokenizedWord'])
     top_20_words = pd.DataFrame.from_dict(Counter(tokenized_word_list), orient='index').\
                 reset_index().rename(columns = {'index': 'Word', 0: 'Count'}).\
                 sort_values(['Count'], ascending = False).head(20).\
@@ -159,20 +158,19 @@ def main():
     print('With Stemming, with stopwords:')
 
     print(str(datetime.datetime.now()).split('.')[0] + ': Start processing tokenizing')
-    # df['StemmedTokenizedWord'] = df['SegmentedSentences'].apply(lambda sentences: flatten([tokenize(sentence, unique=False, freq=False, stem = True) for sentence in sentences]))
     stemmer = SnowballStemmer("english")
-    df['StemmedTokenizedWord'] = df['TokenizedWordByReview'].apply(lambda tokens: [stemmer.stem(token) for token in tokens])
-    df['StemmedWordCount'] = df['StemmedTokenizedWord'].apply(len)
+    df['stemmedTokenizedWord'] = df['tokenizedWord'].apply(lambda tokens: [stemmer.stem(token) for token in tokens])
+    df['stemmedWordCount'] = df['stemmedTokenizedWord'].apply(len)
     print(str(datetime.datetime.now()).split('.')[0] + ': Finish processing tokenizing')
 
-    plot_bar(df['StemmedWordCount'], \
+    plot_bar(df['stemmedWordCount'], \
             title = 'Distribution of Number of Words for Each Review With Stemming', \
             x_label = "Stemmed Word Count", y_label = "Review Count", countplot = False)
-    plot_bar(df['WordCount'].clip(0, 300), \
+    plot_bar(df['stemmedWordCount'].clip(0, 300), \
             title = 'Distribution of Number of Words for Each Review With Stemming (Clipped)', \
             x_label = "Word Count (Clipped)", y_label = "Review Count", countplot = False)
 
-    stemmed_tokenized_word_list = flatten(df['StemmedTokenizedWord'])
+    stemmed_tokenized_word_list = flatten(df['stemmedTokenizedWord'])
     stemmed_top_20_words = pd.DataFrame.from_dict(Counter(stemmed_tokenized_word_list), orient='index').\
                 reset_index().rename(columns = {'index': 'Word', 0: 'Count'}).\
                 sort_values(['Count'], ascending = False).head(20).\
@@ -187,13 +185,17 @@ def main():
     # ## 3.2.4 POS Tagging
     print('=' * 50)
     print('3.2.4 POS Tagging')
-    random_5_sentences = pd.Series(flatten(df['SegmentedSentences'])).sample(5, random_state=5)
-    random_5_df = pd.DataFrame(random_5_sentences, columns = ['Sentence']).reset_index().drop(columns = ['index'])
-    random_5_df['TokenizedSentence'] = random_5_df['Sentence'].apply(tokenize, unique=False, freq=False, stopwords = False)
-    random_5_df['PosTagged'] = random_5_df['TokenizedSentence'].apply(pos_tag)
+
+    sentences = pd.Series(flatten(df['segmentedSentences']))
+    print('Total Number of Sentences: ' + str(len(sentences)))
+
+    random_5_sentences = pd.Series(sentences).sample(5, random_state=5)
+    random_5_df = pd.DataFrame(random_5_sentences, columns = ['sentence']).reset_index().drop(columns = ['index'])
+    random_5_df['tokenizedSentence'] = random_5_df['sentence'].apply(tokenize, unique=False, freq=False, stopwords = False, remove_punc=False, lower=False)
+    random_5_df['posTagged'] = random_5_df['tokenizedSentence'].apply(pos_tag)
     print('=' * 30)
     display(random_5_df)
-    print('==========================')
+    print('=' * 30)
 #end def
 
 
