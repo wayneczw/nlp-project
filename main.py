@@ -12,6 +12,7 @@ from nltk import pos_tag
 from nltk.corpus import stopwords
 from nltk.stem.snowball import SnowballStemmer
 from nltk.tokenize import sent_tokenize, word_tokenize, TweetTokenizer
+from nltk.tokenize.treebank import MacIntyreContractions, TreebankWordTokenizer
 from nltk.tokenize.casual import EMOTICON_RE
 
 import matplotlib
@@ -164,7 +165,46 @@ def main(data_file, seed):
     print(random_5_df)
     print('=' * 30)
 
-def tokenize(sentence, word_tokenizer = TweetTokenizer(), stemmer = None, lower = False, remove_punc = False, remove_stopwords = False, remove_emoji = False):
+class ReviewTokenizer(TreebankWordTokenizer):
+
+    _contractions = MacIntyreContractions()
+    CONTRACTIONS = list(map(re.compile, _contractions.CONTRACTIONS2 + _contractions.CONTRACTIONS3))
+
+    PUNCTUATION = [
+        (re.compile(r'([,])([^\d])'), r' \1 \2'),
+        (re.compile(r'([,])$'), r' \1 '),
+        (re.compile(r'\.\.\.'), r' ... '),
+        (re.compile(r'[;@#$%&]'), r' \g<0> '),
+        # Handles the final period
+        (re.compile(r'([^\.])(\.)([\]\)}>"\']*)\s*$'), r'\1 \2\3 '),
+        (re.compile(r'[?!]'), r' \g<0> '),
+        (re.compile(r"([^'])' "), r"\1 ' "),
+    ]
+
+    def tokenize(self, text):
+        for regexp, substitution in self.STARTING_QUOTES:
+            text = regexp.sub(substitution, text)
+
+        for regexp, substitution in self.PUNCTUATION:
+            text = regexp.sub(substitution, text)
+
+        text = " " + text + " "
+
+        # split contractions
+        for regexp, substitution in self.ENDING_QUOTES:
+            text = regexp.sub(substitution, text)
+        for regexp in self.CONTRACTIONS:
+            text = regexp.sub(r' \1 \2 ', text)
+
+        # handle emojis
+        for emoticon in list(EMOTICON_RE.finditer(text))[::-1]:
+            pos = emoticon.span()[0]
+            if text[pos - 1] != ' ':
+                text = text[:pos] + ' ' + text[pos:]
+
+        return text.split()
+
+def tokenize(sentence, word_tokenizer = ReviewTokenizer(), stemmer = None, lower = False, remove_punc = False, remove_stopwords = False, remove_emoji = False):
 
     tokens = word_tokenizer.tokenize(sentence)
 
