@@ -255,6 +255,11 @@ def segment_sent(text, emoji_tokenizer = TweetTokenizer()):
             sentences += new_sentences
         else:
             sentences.append(sentence)
+
+    if len(sentences) != 0:
+        if sentences[-1] in ['.', '!', '?']:
+            sentences[-2] = sentences[-2] + sentences[-1]
+            sentences = sentences[:-1]
     return sentences
 
 def plot_bar(number_list, title, x_label, y_label, countplot = True):

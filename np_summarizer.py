@@ -77,6 +77,8 @@ class ReviewTokenizer(TreebankWordTokenizer):
 
         return text.split()
 
+
+
 def tokenize(sentence, word_tokenizer = ReviewTokenizer(), stemmer = None, lower = False, remove_punc = False, remove_stopwords = False, remove_emoji = False):
 
     tokens = word_tokenizer.tokenize(sentence)
@@ -129,6 +131,11 @@ def segment_sent(text, emoji_tokenizer = TweetTokenizer()):
             sentences += new_sentences
         else:
             sentences.append(sentence)
+
+    if len(sentences) != 0:
+        if sentences[-1] in ['.', '!', '?']:
+            sentences[-2] = sentences[-2] + sentences[-1]
+            sentences = sentences[:-1]
     return sentences
 
 
@@ -151,32 +158,52 @@ def extract_NP(posTagged):
 
 
 data_path = "./data/CellPhoneReview.json"
-data_path = "./data/sample_data.json"
+# data_path = "./data/sample_data.json"
 data = []
 with open(data_path) as f:
     for line in f:
         data.append(json.loads(line))
 df = pd.DataFrame.from_dict(data)
+df = df.drop(columns = ['overall', 'asin', 'reviewTime', 'reviewerID', 'summary', 'unixReviewTime'])
 
 df['sentences'] = df['reviewText'].apply(segment_sent)
-df['sentenceCount'] = df['sentences'].apply(len)
-df['tokenizedSentences'] = df['sentences'].apply(lambda sentences: [tokenize(sentence) for sentence in sentences])
+# df['sentenceCount'] = df['sentences'].apply(len)
+# df['tokenizedSentences'] = df['sentences'].apply(lambda sentences: [tokenize(sentence) for sentence in sentences])
 
-original_sentences = flatten([[zipped[1]] * zipped[0] for zipped in zip(df['sentenceCount'], df['reviewText'])])
-sentences_df = pd.DataFrame(original_sentences, columns = ['originalSentences']).reset_index().drop(columns = ['index'])
-sentences_df['sentence'] = pd.Series(flatten(df['tokenizedSentences']))
-sentences_df['posTagged'] = sentences_df['sentence'].apply(pos_tag)
-sentences_df['tags'] = sentences_df['posTagged'].apply(lambda posTagged: [tag[1] for tag in posTagged])
-sentences_df['noun_phrases'] = sentences_df['posTagged'].apply(extract_NP)
 
-top_20_noun_phrases = pd.DataFrame.from_dict(Counter(flatten(sentences_df['noun_phrases'])), orient='index').\
-                reset_index().rename(columns = {'index': 'Word', 0: 'Count'}).\
-                sort_values(['Count'], ascending = False).head(20).\
-                reset_index().drop(columns = ['index'])
-top_20_noun_phrases
-sentences_df.head()
+# original_sentences = flatten([[zipped[1]] * zipped[0] for zipped in zip(df['sentenceCount'], df['reviewText'])])
+# sentences_df = pd.DataFrame(original_sentences, columns = ['originalSentences']).reset_index().drop(columns = ['index'])
+# sentences_df['sentence'] = pd.Series(flatten(df['tokenizedSentences']))
+# sentences_df['posTagged'] = sentences_df['sentence'].apply(pos_tag)
+# sentences_df['tags'] = sentences_df['posTagged'].apply(lambda posTagged: [tag[1] for tag in posTagged])
+# sentences_df['noun_phrases'] = sentences_df['posTagged'].apply(extract_NP)
+#
+# top_20_noun_phrases = pd.DataFrame.from_dict(Counter(flatten(sentences_df['noun_phrases'])), orient='index').\
+#                 reset_index().rename(columns = {'index': 'Word', 0: 'Count'}).\
+#                 sort_values(['Count'], ascending = False).head(20).\
+#                 reset_index().drop(columns = ['index'])
+# top_20_noun_phrases
+# sentences_df.head()
+#
+# sentences_df.head(10)
 
-sentences_df.head(10)
+
+def get_emojis(sentences):
+    emojis = []
+    for sentence in sentences:
+        for emoticon in list(EMOTICON_RE.finditer(sentence))[::-1]:
+            emojis.append(emoticon.string[(emoticon.span()[0]):])
+    return emojis
+
+df['sentenceLen'] = df['sentences'].apply(lambda sentences: [len(sen) for sen in sentences])
+df['emojis'] = df['sentences'].apply(get_emojis)
+len(flatten(df['emojis']))
+set(flatten(df['emojis']))
+df[df['sentenceLen'].apply(lambda lens: True if 1 in lens else False)]
+sentences_df[sentences_df['sentenceLen'] == 2]
+sentences_df[sentences_df['sentenceLen'] == 3]
+sentences_df.sort_values(['sentenceLen'])
+
 
 # set((flatten(sentences_df['tags'])))
 # (Adjective | Noun)* (Noun Preposition)? (Adjective | Noun)* Noun
