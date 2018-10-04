@@ -53,5 +53,8 @@ def _process_regex_dict(regex_dict, regex_escape=False, **kwargs):
 
 
     # return '(' + '|'.join(regex_pattern_list) + r')*[.?!]\s*'
-    return '(((' + emoticon_regex_pattern + r')\s*)*([.!?]+\s+))|(((' + emoticon_regex_pattern + r')\s*)+([.!?]*\s+))'
+    if regex_escape:
+        return '(((' + emoticon_regex_pattern + r')\s*)*([.!?]+\s+))|(((' + emoticon_regex_pattern + r')\s*)+([.!?]*\s+))'
+    else:
+        return set(regex_pattern_list)
 #end def
