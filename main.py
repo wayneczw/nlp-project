@@ -13,7 +13,7 @@ from nltk.corpus import stopwords
 from nltk.stem.snowball import SnowballStemmer
 from nltk.tokenize import sent_tokenize, word_tokenize, TweetTokenizer
 from nltk.tokenize.treebank import MacIntyreContractions, TreebankWordTokenizer
-from nltk.tokenize.casual import EMOTICON_RE
+from nltk.tokenize.casual import EMOTICON_RE, _replace_html_entities
 
 import matplotlib
 matplotlib.use('TkAgg')
@@ -174,7 +174,7 @@ class ReviewTokenizer(TreebankWordTokenizer):
         (re.compile(r'([,])([^\d])'), r' \1 \2'),
         (re.compile(r'([,])$'), r' \1 '),
         (re.compile(r'\.\.\.'), r' ... '),
-        (re.compile(r'[;@#$%&]'), r' \g<0> '),
+        (re.compile(r'[;@#&]'), r' \g<0> '),
         # Handles the final period
         (re.compile(r'([^\.])(\.)([\]\)}>"\']*)\s*$'), r'\1 \2\3 '),
         (re.compile(r'[?!]'), r' \g<0> '),
@@ -182,6 +182,9 @@ class ReviewTokenizer(TreebankWordTokenizer):
     ]
 
     def tokenize(self, text):
+
+        text = _replace_html_entities(text)
+        
         for regexp, substitution in self.STARTING_QUOTES:
             text = regexp.sub(substitution, text)
 
