@@ -33,6 +33,8 @@ DEFAULT_DATA_FILE = "./data/sample_data.json"
 IMAGES_DIRECTORY = './images'
 DEFAULT_SEED = 42
 STOPWORDS = set(stopwords.words('english') + ["'s", "one", "use", "would", "get", "also"]) - {'not', 'no', 'won', 'more', 'above', 'very', 'against', 'again'}
+PUNCTUATION = string.punctuation + '...'
+SPECIAL_TOKEN_DICT = {"n't": 'not'}
 
 flatten = lambda l: [item for sublist in l for item in sublist]
 is_word = lambda token: not(EMOTICON_RE.search(token) or token in string.punctuation or token in STOPWORDS)
@@ -43,7 +45,7 @@ def main(data_file, seed):
     np.random.seed(seed)
 
     # load in a pd.df
-    data = [json.loads(line) for line in data_file]
+    data = [json.loads(line) for file in data_file for line in file]
     df = pd.DataFrame.from_dict(data)
 
     # make directory for images
@@ -105,7 +107,7 @@ def main(data_file, seed):
     ## 3.2.3 Tokenization and Stemming
     print_header('3.2.3 Tokenization and Stemming', 50)
 
-    df['tokenizedSentences'] = df['sentences'].apply(lambda sentences: [tokenize(sentence) for sentence in sentences])
+    df['tokenizedSentences'] = df['sentences'].apply(lambda sentences: [tokenize(sentence, remove_punc=True) for sentence in sentences])
     df['tokens'] = df['tokenizedSentences'].apply(flatten)
 
     ### No Stemming
@@ -225,11 +227,13 @@ def tokenize(sentence, word_tokenizer = ReviewTokenizer(), stemmer = None, lower
 
     # remove punctuation tokens
     if remove_punc:
-        tokens = [token for token in tokens if token not in string.punctuation]
+        tokens = [token for token in tokens if token not in PUNCTUATION]
 
     # stem tokens
     if stemmer:
         tokens = [stemmer.stem(token) for token in tokens]
+
+    tokens = [SPECIAL_TOKEN_DICT[token] if SPECIAL_TOKEN_DICT.get(token, '') else token for token in tokens]
 
     return tokens
 
