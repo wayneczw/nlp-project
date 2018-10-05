@@ -107,7 +107,7 @@ def main(data_file, seed):
     ## 3.2.3 Tokenization and Stemming
     print_header('3.2.3 Tokenization and Stemming', 50)
 
-    df['tokenizedSentences'] = df['sentences'].apply(lambda sentences: [tokenize(sentence, remove_punc=True) for sentence in sentences])
+    df['tokenizedSentences'] = df['sentences'].apply(lambda sentences: [tokenize(sentence, lower=True, remove_punc=True, remove_stopwords=True) for sentence in sentences])
     df['tokens'] = df['tokenizedSentences'].apply(flatten)
 
     ### No Stemming
