@@ -13,7 +13,7 @@ from nltk.corpus import stopwords
 from nltk.stem.snowball import SnowballStemmer
 from nltk.tokenize import sent_tokenize, word_tokenize, TweetTokenizer
 from nltk.tokenize.treebank import MacIntyreContractions, TreebankWordTokenizer
-from nltk.tokenize.casual import EMOTICON_RE
+from nltk.tokenize.casual import EMOTICON_RE, _replace_html_entities
 from nltk import RegexpParser
 
 import matplotlib
@@ -47,7 +47,7 @@ class ReviewTokenizer(TreebankWordTokenizer):
         (re.compile(r'([,])([^\d])'), r' \1 \2'),
         (re.compile(r'([,])$'), r' \1 '),
         (re.compile(r'\.\.\.'), r' ... '),
-        (re.compile(r'[;@#$%&]'), r' \g<0> '),
+        (re.compile(r'[;@#&]'), r' \g<0> '),
         # Handles the final period
         (re.compile(r'([^\.])(\.)([\]\)}>"\']*)\s*$'), r'\1 \2\3 '),
         (re.compile(r'[?!]'), r' \g<0> '),
@@ -55,6 +55,9 @@ class ReviewTokenizer(TreebankWordTokenizer):
     ]
 
     def tokenize(self, text):
+
+        text = _replace_html_entities(text)
+
         for regexp, substitution in self.STARTING_QUOTES:
             text = regexp.sub(substitution, text)
 
@@ -76,8 +79,6 @@ class ReviewTokenizer(TreebankWordTokenizer):
                 text = text[:pos] + ' ' + text[pos:]
 
         return text.split()
-
-
 
 def tokenize(sentence, word_tokenizer = ReviewTokenizer(), stemmer = None, lower = False, remove_punc = False, remove_stopwords = False, remove_emoji = False):
 
@@ -165,45 +166,98 @@ with open(data_path) as f:
         data.append(json.loads(line))
 df = pd.DataFrame.from_dict(data)
 df = df.drop(columns = ['overall', 'asin', 'reviewTime', 'reviewerID', 'summary', 'unixReviewTime'])
+# df = df.sample(10000)
 
 df['sentences'] = df['reviewText'].apply(segment_sent)
 # df['sentenceCount'] = df['sentences'].apply(len)
-# df['tokenizedSentences'] = df['sentences'].apply(lambda sentences: [tokenize(sentence) for sentence in sentences])
+df['tokenizedSentences'] = df['sentences'].apply(lambda sentences: [tokenize(sentence) for sentence in sentences])
 
 
 # original_sentences = flatten([[zipped[1]] * zipped[0] for zipped in zip(df['sentenceCount'], df['reviewText'])])
 # sentences_df = pd.DataFrame(original_sentences, columns = ['originalSentences']).reset_index().drop(columns = ['index'])
 # sentences_df['sentence'] = pd.Series(flatten(df['tokenizedSentences']))
-# sentences_df['posTagged'] = sentences_df['sentence'].apply(pos_tag)
-# sentences_df['tags'] = sentences_df['posTagged'].apply(lambda posTagged: [tag[1] for tag in posTagged])
-# sentences_df['noun_phrases'] = sentences_df['posTagged'].apply(extract_NP)
-#
-# top_20_noun_phrases = pd.DataFrame.from_dict(Counter(flatten(sentences_df['noun_phrases'])), orient='index').\
-#                 reset_index().rename(columns = {'index': 'Word', 0: 'Count'}).\
-#                 sort_values(['Count'], ascending = False).head(20).\
-#                 reset_index().drop(columns = ['index'])
-# top_20_noun_phrases
-# sentences_df.head()
-#
-# sentences_df.head(10)
+sentences_df = pd.DataFrame(pd.Series(flatten(df['tokenizedSentences'])), columns = ['sentence']).reset_index().drop(columns = ['index'])
 
+sentences_df[sentences_df['sentence'].apply(lambda sentence: True if '&' in sentence else False)]
+sentences_df['posTagged'] = sentences_df['sentence'].apply(pos_tag)
+sentences_df['tags'] = sentences_df['posTagged'].apply(lambda posTagged: [tag[1] for tag in posTagged])
+sentences_df['noun_phrases'] = sentences_df['posTagged'].apply(extract_NP)
 
-def get_emojis(sentences):
+top_20_noun_phrases = pd.DataFrame.from_dict(Counter(flatten(sentences_df['noun_phrases'])), orient='index').\
+                reset_index().rename(columns = {'index': 'Word', 0: 'Count'}).\
+                sort_values(['Count'], ascending = False).head(20).\
+                reset_index().drop(columns = ['index'])
+top_20_noun_phrases
+sentences_df.head()
+
+sentences_df.head(10)
+
+class EmojiTokenizer(TreebankWordTokenizer):
+
+    _contractions = MacIntyreContractions()
+    CONTRACTIONS = list(map(re.compile, _contractions.CONTRACTIONS2 + _contractions.CONTRACTIONS3))
+
+    PUNCTUATION = [
+        (re.compile(r'([,])([^\d])'), r' \1 \2'),
+        (re.compile(r'([,])$'), r' \1 '),
+        (re.compile(r'\.\.\.'), r' ... '),
+        (re.compile(r'[;@#$%&]'), r' \g<0> '),
+        # Handles the final period
+        (re.compile(r'([^\.])(\.)([\]\)}>"\']*)\s*$'), r'\1 \2\3 '),
+        (re.compile(r'[?!]'), r' \g<0> '),
+        (re.compile(r"([^'])' "), r"\1 ' "),
+    ]
+
     emojis = []
-    for sentence in sentences:
-        for emoticon in list(EMOTICON_RE.finditer(sentence))[::-1]:
-            emojis.append(emoticon.string[(emoticon.span()[0]):])
-    return emojis
+
+    def tokenize(self, text):
+        for regexp, substitution in self.STARTING_QUOTES:
+            text = regexp.sub(substitution, text)
+
+        for regexp, substitution in self.PUNCTUATION:
+            text = regexp.sub(substitution, text)
+
+        text = " " + text + " "
+
+        # split contractions
+        for regexp, substitution in self.ENDING_QUOTES:
+            text = regexp.sub(substitution, text)
+        for regexp in self.CONTRACTIONS:
+            text = regexp.sub(r' \1 \2 ', text)
+
+        # handle emojis
+        for emoticon in list(EMOTICON_RE.finditer(text))[::-1]:
+            self.emojis.append(emoticon.group())
+            pos = emoticon.span()[0]
+            if text[pos - 1] != ' ':
+                text = text[:pos] + ' ' + text[pos:]
+
+        return text.split()
+
+_replace_html_entities('&#34;')
+tokenize(segment_sent('&#34;100')[0])
+
+tokenizer = EmojiTokenizer()
+for sentence in flatten(df['sentences']):
+    tokenize(sentence, word_tokenizer = tokenizer)
+emojis = tokenizer.emojis
+
+clarence = set(tokenizer.emojis)
+
+zhiwei = {':)': 2520, ':(': 808, ':*': 664, ';)': 427, ':&': 357, ':D': 163, ':[': 152, '=)': 149, ':/': 100, ':>': 57, ':3': 46, ':$': 46, ':P': 36, ':o': 24, '8)': 18, ':-*': 18, ':#': 15, ':o)': 15, ':p': 15, '=]': 14, ':]': 10, ':-))': 9, '=3': 8, ':O': 7, ';D': 7, ':-3': 6, 'D:': 5, ":'(": 5, ':S': 5, '*)': 5, ':-}': 4, ':\\': 4, ':{': 3, ';]': 3, ':c': 3, ':b': 3, ':|': 2, ':^)': 2, '>:(': 2, '3:)': 2, '>:[': 1, ':X': 1, ':L': 1, ':@': 1, ':-0': 1, ':}': 1, '>:)': 1, ":')": 1, '>_>': 1, 'DX': 1}
+zhiwei_set = set(zhiwei.keys())
+clarence = [(':)', 2561), (':(', 667), (':P', 521), ('/8', 512), (':-)', 493), ('):', 482), ('p:', 384), (':D', 345), ('(8', 204), ('8/', 190), (':/', 162), ('=)', 152), ('(:', 143), ('P8', 134), (':-(', 107), ('8)', 79), (':=', 77), ('8:', 77), (':[', 71), (':-D', 57), ('do:', 50), (':-P', 49), ('::', 47), (':p', 42), ('8-p', 31), (']:', 29), ('|8', 27), ('=(', 24), (':-/', 24), ('8p', 24), ('8-P', 19), (':o)', 15), (')8', 14), ('=]', 14), ('D8', 13), (':-p', 13), ('=p', 12), (')=', 11),      ('=P', 11), ('=D', 10), (':]', 9), ('/:', 8), (':d', 7), ('8P', 7), ('=/', 7), ('=-)', 7), ('8D', 7), (':8', 7), ('(=', 6), (':*P', 6), ('=[', 6), (':-d', 6), ('<3', 6), ('D:', 6), (':\\', 5), ('=d', 5), ('8d', 5), ('(-:', 5), (":'(", 5), (':O)', 4), ('>:(', 4), (':-}', 4), (':*)', 3), (':-{', 3), (':*D', 3), ('=o)', 3), (':}', 3), (':-\\', 3), ('=|', 2), (':Op', 2), (':|', 2), ('8-)', 2), ('=}', 2), ('=\\', 2), (':*(', 2), ('8-d', 2), (':-8', 2), ('>:[', 1), (':OP', 1), ('>:)', 1), ('(-8', 1), ('=-[', 1), ('>:|', 1), ('[:', 1), (':*[', 1), (']=', 1), (':{', 1), (':O/', 1), ('[=', 1), (':o/', 1), ('=-D', 1), (":')", 1), (')=>', 1), (':-|', 1), ('/=', 1), ('\\8', 1), (':*d', 1), ('8oP', 1)]
+clarence_set = [pair[0] for pair in clarence]
+
+{emoji: zhiwei[emoji] for emoji in zhiwei_set.difference(clarence_set)}
+len(zhiwei.difference(clarence))
+len(clarence.difference(zhiwei))
+len(clarence.intersection(zhiwei))
+clarence
+zhiwei
+print(Counter(emojis).most_common())
 
 df['sentenceLen'] = df['sentences'].apply(lambda sentences: [len(sen) for sen in sentences])
-df['emojis'] = df['sentences'].apply(get_emojis)
-len(flatten(df['emojis']))
-set(flatten(df['emojis']))
-df[df['sentenceLen'].apply(lambda lens: True if 1 in lens else False)]
-sentences_df[sentences_df['sentenceLen'] == 2]
-sentences_df[sentences_df['sentenceLen'] == 3]
-sentences_df.sort_values(['sentenceLen'])
-
 
 # set((flatten(sentences_df['tags'])))
 # (Adjective | Noun)* (Noun Preposition)? (Adjective | Noun)* Noun
