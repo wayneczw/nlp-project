@@ -32,9 +32,12 @@ pd.set_option('display.max_columns', 10)
 DEFAULT_DATA_FILE = "./data/sample_data.json"
 IMAGES_DIRECTORY = './images'
 DEFAULT_SEED = 42
-STOPWORDS = set(stopwords.words('english') + ["'s", "one", "use", "would", "get", "also"]) - {'not', 'no', 'won', 'more', 'above', 'very', 'against', 'again'}
+STOPWORDS = set(stopwords.words('english') + ["'ve", "'d", "'s", "one", "use", "would", "get", "also"]) - {'not', 'no', 'won', 'more', 'above', 'very', 'against', 'again'}
 PUNCTUATION = string.punctuation + '...'
 SPECIAL_TOKEN_DICT = {"n't": 'not'}
+boundary_punc = '.:;!?,'
+NEG_SENT_BOUND_RE = re.compile(EMOTICON_RE.pattern + '|' + '|'.join([re.escape(punc) for punc in boundary_punc]))
+NEG_WORD_RE = re.compile(r"(?:^(?:never|no|nothing|nowhere|noone|none|not)$)")
 
 flatten = lambda l: [item for sublist in l for item in sublist]
 is_word = lambda token: not(EMOTICON_RE.search(token) or token in string.punctuation or token in STOPWORDS)
@@ -209,7 +212,7 @@ class ReviewTokenizer(TreebankWordTokenizer):
 
         return text.split()
 
-def tokenize(sentence, word_tokenizer = ReviewTokenizer(), stemmer = None, lower = False, remove_punc = False, remove_stopwords = False, remove_emoji = False):
+def tokenize(sentence, word_tokenizer = ReviewTokenizer(), stemmer = None, lower = False, remove_punc = False, remove_stopwords = False, remove_emoji = False, convert_neg = False):
 
     tokens = word_tokenizer.tokenize(sentence)
 
@@ -225,6 +228,10 @@ def tokenize(sentence, word_tokenizer = ReviewTokenizer(), stemmer = None, lower
     if remove_emoji:
         tokens = [token for token in tokens if not EMOTICON_RE.search(token)]
 
+    # NEG_SENTENCE_BOUNDARY_LIST
+    if convert_neg == True:
+        tokens = _convert_neg(tokens)
+
     # remove punctuation tokens
     if remove_punc:
         tokens = [token for token in tokens if token not in PUNCTUATION]
@@ -236,6 +243,34 @@ def tokenize(sentence, word_tokenizer = ReviewTokenizer(), stemmer = None, lower
     tokens = [SPECIAL_TOKEN_DICT[token] if SPECIAL_TOKEN_DICT.get(token, '') else token for token in tokens]
 
     return tokens
+
+def _convert_neg(tokens):
+    '''
+        convert word to NEGATIVEword if there are negation words
+        NEG_WORD_LIST,NEG_SENTENCE_BOUNDARY_LIST
+    '''
+    new_tokenized_list = list()
+    i = 0
+    n = len(tokens)
+    while i < n:
+        token = tokens[i]
+        new_tokenized_list.append(token)
+        # e.g. if token is negative word, the following words should be negated
+        if NEG_WORD_RE.match(token):
+            i += 1
+            while (i < n) :
+                token = tokens[i]
+                if not NEG_SENT_BOUND_RE.match(token):
+                    new_tokenized_list.append('neg_'+token)
+                else:
+                    # end of negation
+                    new_tokenized_list.append(token)
+                    break
+                i += 1
+            #end while
+        i += 1
+    #end while
+    return new_tokenized_list
 
 def sanitise(text):
     # Append whitespace after punctuations
