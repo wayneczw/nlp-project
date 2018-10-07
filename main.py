@@ -360,9 +360,9 @@ def _convert_neg(tokens):
     return new_tokenized_list
 
 def sanitise(text):
-    # Append whitespace after punctuations
+    # Append whitespace after punctuations, except .com
     for p in '.?!':
-        regex = r'\{}(?=[^ \W\d])'.format(p)
+        regex = r'\{}(?=[^ \W\d](?!com))'.format(p)
         text = re.sub(regex, p + ' ', text)
     return text
 
