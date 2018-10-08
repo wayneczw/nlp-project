@@ -362,7 +362,7 @@ def _convert_neg(tokens):
 def sanitise(text):
     # Append whitespace after punctuations, except .com
     for p in '.?!':
-        regex = r'(?![^\d])\{}(?=[^ \W])(?!com)'.format(p)
+        regex = r'(?<=[^\d]+)\{}(?=[^ \W])(?!com)'.format(p)
         text = re.sub(regex, p + ' ', text)
     return text
 
