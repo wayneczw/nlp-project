@@ -8,7 +8,7 @@ import string
 import os
 import json
 
-from nltk import pos_tag
+from nltk import pos_tag,pos_tag_sents
 from nltk.corpus import stopwords
 from nltk.stem.snowball import SnowballStemmer
 from nltk.tokenize import sent_tokenize, word_tokenize, TweetTokenizer
@@ -19,6 +19,8 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import seaborn as sns
+import datetime
+
 
 # %matplotlib inline
 plt.style.use('seaborn-whitegrid')
@@ -32,15 +34,16 @@ pd.set_option('display.max_columns', 10)
 DEFAULT_DATA_FILE = "./data/sample_data.json"
 IMAGES_DIRECTORY = './images'
 DEFAULT_SEED = 42
-STOPWORDS = set(stopwords.words('english') + ["'ve", "'d", "'s", "one", "use", "would", "get", "also"]) - {'not', 'no', 'won', 'more', 'above', 'very', 'against', 'again'}
+STOPWORDS = set(stopwords.words('english') + ["'ve','s", "one", "use", "would", "get", "also"]) - {'not', 'no', 'won', 'more', 'above', 'very', 'against', 'again'}
 PUNCTUATION = string.punctuation + '...'
 SPECIAL_TOKEN_DICT = {"n't": 'not'}
-boundary_punc = '.:;!?,'
-NEG_SENT_BOUND_RE = re.compile(EMOTICON_RE.pattern + '|' + '|'.join([re.escape(punc) for punc in boundary_punc]))
-NEG_WORD_RE = re.compile(r"(?:^(?:never|no|nothing|nowhere|noone|none|not)$)")
 
 flatten = lambda l: [item for sublist in l for item in sublist]
 is_word = lambda token: not(EMOTICON_RE.search(token) or token in string.punctuation or token in STOPWORDS)
+
+NEG_SENT_BOUND_RE = re.compile(EMOTICON_RE.pattern +'|'+'|'.join(['\.','\:','\;','\!','\?','\,']))
+NEG_WORD_RE = re.compile(r"(?:^(?:never|no|nothing|nowhere|noone|none|not)$)")
+
 
 def main(data_file, seed):
 
@@ -51,134 +54,25 @@ def main(data_file, seed):
     data = [json.loads(line) for file in data_file for line in file]
     df = pd.DataFrame.from_dict(data)
 
-    # make directory for images
     if not os.path.exists(IMAGES_DIRECTORY):
         os.mkdir(IMAGES_DIRECTORY)
 
-    print_header('3.2.1 Popular Products and Frequent Reviewers', 50)
-
-    ## 3.2.1 get top 10 products
-    top_10_products = df['asin'].value_counts().head(10).reset_index().rename(columns = {'index': 'productID', 'asin': 'reviewCount'})
-    print_header('Top 10 products', char = '-')
-    print(top_10_products)
-
-    #     productID  reviewCount
-    # 0  B005SUHPO6          836
-    # 1  B0042FV2SI          690
-    # 2  B008OHNZI0          657
-    # 3  B009RXU59C          634
-    # 4  B000S5Q9CA          627
-    # 5  B008DJIIG8          510
-    # 6  B0090YGJ4I          448
-    # 7  B009A5204K          434
-    # 8  B00BT7RAPG          431
-    # 9  B0015RB39O          424
-
-
-    ## 3.2.1 get top 10 reviewers
-    top_10_reviewers = df['reviewerID'].value_counts().head(10).reset_index().rename(columns = {'index': 'reviewerID', 'reviewerID': 'reviewCount'})
-    print_header('Top 10 reviewers', char = '-')
-    print(top_10_reviewers)
-
-    #        reviewerID  reviewCount
-    # 0  A2NYK9KWFMJV4Y          152
-    # 1  A22CW0ZHY3NJH8          138
-    # 2  A1EVV74UQYVKRY          137
-    # 3  A1ODOGXEYECQQ8          133
-    # 4  A2NOW4U7W3F7RI          132
-    # 5  A36K2N527TXXJN          124
-    # 6  A1UQBFCERIP7VJ          112
-    # 7   A1E1LEVQ9VQNK          109
-    # 8  A18U49406IPPIJ          109
-    # 9   AYB4ELCS5AM8P          107
-
-    ## 3.2.2 Sentence segmentation
-    print_header('3.2.2 Sentence Segmentation', 50)
-
-    df['sentences'] = df['reviewText'].apply(segment_sent)
-    df['sentenceCount'] = df['sentences'].apply(len)
-
-    # plotting for number of sentences
-    plot_bar(df['sentenceCount'], \
-            title = 'Distribution of Number of Sentences for Each Review', \
-            x_label = "Sentence Count", y_label = "Review Count", countplot = False)
-
-    plot_bar(df['sentenceCount'].clip(0, 50), \
-            title = 'Distribution of Number of Sentences for Each Review (Clipped)', \
-            x_label = "Sentence Count (Clipped)", y_label = "Review Count", countplot = True)
-
-    ## 3.2.3 Tokenization and Stemming
-    print_header('3.2.3 Tokenization and Stemming', 50)
-
-    df['tokenizedSentences'] = df['sentences'].apply(lambda sentences: [tokenize(sentence, lower=True, remove_punc=True, remove_stopwords=True) for sentence in sentences])
-    df['tokens'] = df['tokenizedSentences'].apply(flatten)
-
-    ### No Stemming
-    print_header('No Stemming', char = '-')
-    df['words'] = df['tokens'].apply(lambda tokens: [token.lower() for token in tokens])
-    df['words'] = df['words'].apply(lambda tokens: [token for token in tokens if is_word(token)])
-    df['wordCount'] = df['words'].apply(len)
-
-    # token = {normal_word, emoji, stopword, punctuation}
-    # word = {normal_word, emoji}
-
-    plot_bar(df['wordCount'], title = 'Distribution of Number of Words for Each Review Without Stemming',
-            x_label = "Word Count", y_label = "Review Count", countplot = False)
-    plot_bar(df['wordCount'].clip(0, 300), title = 'Distribution of Number of Words for Each Review Without Stemming (Clipped)',
-            x_label = "Word Count (Clipped)", y_label = "Review Count", countplot = False)
-
-    words = flatten(df['words'])
-    top_20_words = pd.DataFrame.from_dict(Counter(words), orient='index').\
-                reset_index().rename(columns = {'index': 'Word', 0: 'Count'}).\
-                sort_values(['Count'], ascending = False).head(20).\
-                reset_index().drop(columns = ['index'])
-
-    print_header('Top 20 Words Without Stemming', char = '-')
-    print(top_20_words)
-
-    ### With Stemming
-    print_header('With Stemming', char = '-')
-    stemmer = SnowballStemmer("english")
-    df['stemmedWords'] = df['words'].apply(lambda tokens: [stemmer.stem(token) for token in tokens])
-    df['stemmedWordCount'] = df['stemmedWords'].apply(len)
-
-    plot_bar(df['stemmedWordCount'], \
-            title = 'Distribution of Number of Words for Each Review With Stemming', \
-            x_label = "Stemmed Word Count", y_label = "Review Count", countplot = False)
-    plot_bar(df['stemmedWordCount'].clip(0, 300), \
-            title = 'Distribution of Number of Words for Each Review With Stemming (Clipped)', \
-            x_label = "Word Count (Clipped)", y_label = "Review Count", countplot = False)
-
-    stemmed_words = flatten(df['stemmedWords'])
-    top_20_stemmed_words = pd.DataFrame.from_dict(Counter(stemmed_words), orient='index').\
-                reset_index().rename(columns = {'index': 'Word', 0: 'Count'}).\
-                sort_values(['Count'], ascending = False).head(20).\
-                reset_index().drop(columns = ['index'])
-
-    print_header('Top 20 Words with Stemming', char = '-')
-    print(top_20_stemmed_words)
-
-    print_header('3.2.4 POS Tagging', 50)
-
-    tokenized_sentences = pd.Series(flatten(df['tokenizedSentences']))
-    print('Total Number of Sentences: ' + str(len(tokenized_sentences)))
-
-    random_5_sentences = tokenized_sentences.sample(5, random_state = seed)
-    random_5_df = pd.DataFrame(random_5_sentences, columns = ['sentence']).reset_index().drop(columns = ['index'])
-    random_5_df['posTagged'] = random_5_df['sentence'].apply(pos_tag)
-    print('=' * 30)
-    print(random_5_df)
-    print('=' * 30)
-
-    # 3.4. Sentiment Word Detection
+    # 1. Sentence Segmentation
     print(str(datetime.datetime.now()).split('.')[0] + ': Start processing sentence segmentation')
+    df['sentences'] = df['reviewText'].apply(segment_sent)
+
+    # 2. Tokenization
+    # (1) convert emoticon from regex to text
+    # (2) remove stop words
+    # (3) convert all the other words in a sentence with negation words to NOT_word
 
     print(str(datetime.datetime.now()).split('.')[0] + ': Start processing tokenizing')
-    # convert all the other words in a sentence with negation words to NOT_word
-    df['tokenizedNegSentences'] = df['sentences'].apply(lambda sentences: [tokenize(sentence, lower = True, remove_punc = True, remove_stopwords = False, convert_neg = True) for sentence in sentences])
-    df['negtokens'] = df['tokenizedNegSentences'].apply(flatten)
-    df['negtokens'] = df['negtokens'].apply(lambda tokens: list(set(tokens)))
-   
+    df['tokenizedSentences'] = df['sentences'].apply(lambda sentences: [tokenize(sentence, lower = True, remove_punc = True, remove_stopwords = False, convert_neg = True) for sentence in sentences])
+
+    # df['posTagged'] = df['tokenizedSentences'].apply(lambda sentences: pos_tag_sents(sentences))
+
+    df['tokens'] = df['tokenizedSentences'].apply(flatten)
+    df['tokens'] = df['tokens'].apply(lambda tokens: list(set(tokens)))
     print(str(datetime.datetime.now()).split('.')[0] + ': Finish processing tokenizing')
 
     df_positive = df[df['overall'] > 3]
@@ -256,7 +150,6 @@ def main(data_file, seed):
     # 497  neg_money      467
 #end def
 
-
 class ReviewTokenizer(TreebankWordTokenizer):
 
     _contractions = MacIntyreContractions()
@@ -276,7 +169,7 @@ class ReviewTokenizer(TreebankWordTokenizer):
     def tokenize(self, text):
 
         text = _replace_html_entities(text)
-        
+
         for regexp, substitution in self.STARTING_QUOTES:
             text = regexp.sub(substitution, text)
 
@@ -300,7 +193,10 @@ class ReviewTokenizer(TreebankWordTokenizer):
         return text.split()
 
 def tokenize(sentence, word_tokenizer = ReviewTokenizer(), stemmer = None, lower = False, remove_punc = False, remove_stopwords = False, remove_emoji = False, convert_neg = False):
-
+    '''
+        During tokenization:
+        if the sentence contains negation words, convert all the other words into ("NOT_"+word) until NEG_SENTENCE_BOUNDARY_LIST
+    '''
     tokens = word_tokenizer.tokenize(sentence)
 
     # convert tokens to lowercase
@@ -330,6 +226,7 @@ def tokenize(sentence, word_tokenizer = ReviewTokenizer(), stemmer = None, lower
     tokens = [SPECIAL_TOKEN_DICT[token] if SPECIAL_TOKEN_DICT.get(token, '') else token for token in tokens]
 
     return tokens
+#end def
 
 def _convert_neg(tokens):
     '''
@@ -360,9 +257,9 @@ def _convert_neg(tokens):
     return new_tokenized_list
 
 def sanitise(text):
-    # Append whitespace after punctuations, except .com
+    # Append whitespace after punctuations
     for p in '.?!':
-        regex = r'(?<=[^\d]+)\{}(?=[^ \W])(?!com)'.format(p)
+        regex = r'\{}(?=[^ \W\d])'.format(p)
         text = re.sub(regex, p + ' ', text)
     return text
 
