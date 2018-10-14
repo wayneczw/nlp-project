@@ -48,7 +48,7 @@ def main(data_file, seed):
     np.random.seed(seed)
 
     # load in a pd.df
-    data = [json.loads(line) for file in data_file for line in file]
+    data = [json.loads(line) for line in data_file]
     df = pd.DataFrame.from_dict(data)
 
     # make directory for images
@@ -417,9 +417,9 @@ if __name__ == '__main__':
     parser = ArgumentParser(description = """
         CZ4045 NLP Project: Product Review Data Analysis and Processing. Use '--help' to list available arguments.
     """)
-    parser.add_argument('-i', '--data', type = FileType('r'), nargs = '+', metavar = '<data>',
+    parser.add_argument('-i', '--data', type = FileType('r'), metavar = '<data>',
         required = False, help = 'Product review data in JSON format', default = DEFAULT_DATA_FILE)
-    parser.add_argument('-s', '--seed', type = int, nargs = '+', metavar = '<seed>',
+    parser.add_argument('-s', '--seed', type = int, metavar = '<seed>',
         required = False, help = 'Seed to be used for pseudo randomisations', default = DEFAULT_SEED)
     args = parser.parse_args()
 
