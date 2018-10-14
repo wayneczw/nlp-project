@@ -7,8 +7,9 @@ import regex as re
 import string
 import os
 import json
+import datetime
 
-from nltk import pos_tag
+from nltk import pos_tag, RegexpParser
 from nltk.corpus import stopwords
 from nltk.stem.snowball import SnowballStemmer
 from nltk.tokenize import sent_tokenize, word_tokenize, TweetTokenizer
@@ -110,14 +111,15 @@ def main(data_file, seed):
     ## 3.2.3 Tokenization and Stemming
     print_header('3.2.3 Tokenization and Stemming', 50)
 
-    df['tokenizedSentences'] = df['sentences'].apply(lambda sentences: [tokenize(sentence, lower=True, remove_punc=True, remove_stopwords=True) for sentence in sentences])
+    df['tokenizedSentences'] = df['sentences'].apply(lambda sentences: [tokenize(sentence) for sentence in sentences])
     df['tokens'] = df['tokenizedSentences'].apply(flatten)
 
     ### No Stemming
     print_header('No Stemming', char = '-')
     df['words'] = df['tokens'].apply(lambda tokens: [token.lower() for token in tokens])
     df['words'] = df['words'].apply(lambda tokens: [token for token in tokens if is_word(token)])
-    df['wordCount'] = df['words'].apply(len)
+    df['uniqueWords'] = df['words'].apply(set)
+    df['wordCount'] = df['uniqueWords'].apply(len)
 
     # token = {normal_word, emoji, stopword, punctuation}
     # word = {normal_word, emoji}
@@ -139,8 +141,8 @@ def main(data_file, seed):
     ### With Stemming
     print_header('With Stemming', char = '-')
     stemmer = SnowballStemmer("english")
-    df['stemmedWords'] = df['words'].apply(lambda tokens: [stemmer.stem(token) for token in tokens])
-    df['stemmedWordCount'] = df['stemmedWords'].apply(len)
+    df['uniqueStemmedWords'] = df['uniqueWords'].apply(lambda tokens: [stemmer.stem(token) for token in tokens]).apply(set)
+    df['stemmedWordCount'] = df['uniqueStemmedWords'].apply(len)
 
     plot_bar(df['stemmedWordCount'], \
             title = 'Distribution of Number of Words for Each Review With Stemming', \
@@ -149,7 +151,7 @@ def main(data_file, seed):
             title = 'Distribution of Number of Words for Each Review With Stemming (Clipped)', \
             x_label = "Word Count (Clipped)", y_label = "Review Count", countplot = False)
 
-    stemmed_words = flatten(df['stemmedWords'])
+    stemmed_words = flatten(df['uniqueStemmedWords'])
     top_20_stemmed_words = pd.DataFrame.from_dict(Counter(stemmed_words), orient='index').\
                 reset_index().rename(columns = {'index': 'Word', 0: 'Count'}).\
                 sort_values(['Count'], ascending = False).head(20).\
@@ -178,7 +180,7 @@ def main(data_file, seed):
     df['tokenizedNegSentences'] = df['sentences'].apply(lambda sentences: [tokenize(sentence, lower = True, remove_punc = True, remove_stopwords = False, convert_neg = True) for sentence in sentences])
     df['negtokens'] = df['tokenizedNegSentences'].apply(flatten)
     df['negtokens'] = df['negtokens'].apply(lambda tokens: list(set(tokens)))
-   
+
     print(str(datetime.datetime.now()).split('.')[0] + ': Finish processing tokenizing')
 
     df_positive = df[df['overall'] > 3]
@@ -276,7 +278,7 @@ class ReviewTokenizer(TreebankWordTokenizer):
     def tokenize(self, text):
 
         text = _replace_html_entities(text)
-        
+
         for regexp, substitution in self.STARTING_QUOTES:
             text = regexp.sub(substitution, text)
 
