@@ -229,8 +229,20 @@ def main(data_file, seed):
 
     product_representative_NPs = products_np[['asin', 'abosoluteTop10', 'relativeTop10', 'relative1']].rename(columns = {'asin': 'productID', 'abosoluteTop10': '10 Representative Noun Phrases (Abosolute)', 'relativeTop10': '10 Representative Noun Phrases (Relative)', 'relative1': 'Representative Noun Phrases (Unique)'})
 
-    print_header('10 Representative Noun Phrases for 3 Popular Products', char = '-')
-    print(product_representative_NPs)
+    print_header('10 Representative Noun Phrases for 3 Popular Products (Including single noun phrases)', char = '-')
+
+    print_header('Abosolute', char = '-')
+    print(pd.DataFrame({row['asin']: row['abosoluteTop10'] for index, row in products_np.iterrows()}))
+
+    print_header('Relative', char = '-')
+    print(pd.DataFrame({row['asin']: row['relativeTop10'] for index, row in products_np.iterrows()}))
+
+    print_header('Unique', char = '-')
+    unique_count_max = (products_np['relative1'].apply(len)).max()
+    products_np['relative1'] = products_np['relative1'].apply(lambda relative1: relative1 + [''] * (unique_count_max - len(relative1)))
+    print(pd.DataFrame({row['asin']: row['relative1'] for index, row in products_np.iterrows()}))
+
+
     #     productID  \
     # 0  B0042FV2SI
     # 1  B005SUHPO6
@@ -297,24 +309,37 @@ def main(data_file, seed):
         .rename(columns = {'asin': 'productID', 'abosoluteTop10ExcludeSingle': '10 Representative Noun Phrases (Abosolute)', 'relativeTop10ExcludeSingle': '10 Representative Noun Phrases (Relative)', 'relative1ExcludeSingle': 'Representative Noun Phrases (Unique)'})
 
     print_header('10 Representative Noun Phrases for 3 Popular Products (Excluding single noun phrases)', char = '-')
-    print(product_representative_NPs)
-    #     productID  \
-    # 0  B0042FV2SI
-    # 1  B005SUHPO6
-    # 2  B008OHNZI0
-    #
-    #                                                                                                                                                                       10 Representative Noun Phrases (Abosolute)  \
-    # 0  [(my phone, 76), (the screen, 73), (this product, 37), (the phone, 35), (the price, 30), (this screen protector, 28), (the screen protector, 24), (my iphone, 24), (the matte finish, 23), (the product, 23)]
-    # 1  [(this case, 228), (the case, 187), (the phone, 184), (my phone, 148), (your phone, 72), (my iphone, 55), (the iphone, 48), (this product, 47), (the price, 42), (the color, 37)]
-    # 2  [(the screen, 125), (the screen protector, 73), (the protector, 58), (this product, 56), (tech armor, 53), (the phone, 52), (my iphone, 50), (my phone, 47), (no bubbles, 45), (the price, 44)]
-    #
-    #                                                                                                                                                                                                                                                                                                                   10 Representative Noun Phrases (Relative)
+
+    print_header('Abosolute', char = '-')
+    print(pd.DataFrame({row['asin']: row['abosoluteTop10ExcludeSingle'] for index, row in products_np.iterrows()}))
+
+    #     B0042FV2SI                   B005SUHPO6              B008OHNZI0
+    # 0  (my phone, 76)               (this case, 228)        (the screen, 125)
+    # 1  (the screen, 73)             (the case, 187)         (the screen protector, 73)
+    # 2  (this product, 37)           (the phone, 184)        (the protector, 58)
+    # 3  (the phone, 35)              (my phone, 148)         (this product, 56)
+    # 4  (the price, 30)              (your phone, 72)        (tech armor, 53)
+    # 5  (this screen protector, 28)  (my iphone, 55)         (the phone, 52)
+    # 6  (the screen protector, 24)   (the iphone, 48)        (my iphone, 50)
+    # 7  (my iphone, 24)              (this product, 47)      (my phone, 47)
+    # 8  (the matte finish, 23)       (the price, 42)         (no bubbles, 45)
+    # 9  (the product, 23)            (the color, 37)         (the price, 44)
+
+    print_header('Relative', char = '-')
+    print(pd.DataFrame({row['asin']: row['relativeTop10ExcludeSingle'] for index, row in products_np.iterrows()}))
+
+    print_header('Unique', char = '-')
+    unique_count_max = (products_np['relative1ExcludeSingle'].apply(len)).max()
+    products_np['relative1ExcludeSingle'] = products_np['relative1ExcludeSingle'].apply(lambda relative1: relative1 + [''] * (unique_count_max - len(relative1)))
+    print(pd.DataFrame({row['asin']: row['relative1ExcludeSingle'] for index, row in products_np.iterrows()}))
+
     # 0  [(the matte finishing, 1.0), (didnt stay, 1.0), (a deeper scratch on the protector, 1.0), (bubble free surface, 1.0), (the 30th amazing, 1.0), (lights indoors, 1.0), (using screen covers by generic for all long time, 1.0), (a clean microfiber cloth/eyeglass cloth, 1.0), (that well on my iphone, 1.0), (best investment for any smartphone, 1.0)]
     # 1  [(otterbox defender series hybrid case, 1.0), (its quite annoying, 1.0), (charging port keeps, 1.0), (an otterbox for my ipad, 1.0), (the line of the case, 1.0), (love thesei, 1.0), (best case for the iphone, 1.0), (is a fake, 1.0), (this casse, 1.0), (might work for others, 1.0)]
     # 2  [(the scotch tape method, 1.0), (the high definition, 1.0), (tab number, 1.0), (the tech armor hd clear screen protector, 1.0), (the home button side, 1.0), (the lint lifter, 1.0), (perfect screen protectors, 1.0), (hate fingerprints, 1.0), (retinashield screen protector, 1.0), (vs personal phone, 1.0)]
 
 
     random_5_reviews = df[['reviewText', 'posTagged', 'nounPhrases']].sample(5, random_state = seed)
+    random_5_reviews['nounPhrasesLen'] = random_5_reviews['nounPhrases'].apply(len)
 
     print_header('Noun Phrase Detector Evaluation for  Random 5 Reviews', char = '-')
     print(random_5_reviews)
@@ -334,14 +359,14 @@ def main(data_file, seed):
     # 21769   [[(The, DT), (item, NN), (was, VBD), (as, IN), (described, NN), (., .)], [(I, PRP), (am, VBP), (completely, RB), (satisfied, JJ), (., .)], [(The, DT), (protector, NN), (does, VBZ), (what, WP), (it, PRP), (is, VBZ), (supposed, VBN), (to, TO), (., .)], [(I, PRP), (would, MD), (reccommend, VB), (this, DT), (product, NN), (to, TO), (anyone, NN), (., .)]]
     #
     #                                                                                                                                                                                                                                                                                      nounPhrases
-    # 178468  [this case, a month, my resident, this case, a galaxy note, the case, work for my phone, the part of the case, the phone in the case, the part, this case, the bottom portion, you, the call on the case, the answer/disconnect on my phone, it, it, amount, it, i, it, the trash]
+    # 178468  [this case, a month, my resident, this case, a galaxy note, the case, work for my phone, the part of the case, the phone in the case, the part, this case, the bottom portion, you, the call on the case, the answer/disconnect on my phone, it, it, amount, it, work, i, it, the trash]
     # 84136   [a good sturdy tpu case with perfect cutouts, no buttons, the product, a tight fit, you, it, awesome case, i, my nexus, the wife, it, she, the case, great deal]
     # 189736  [an impressively sturdy case for the samsung galaxy s5 at an incredible price, the case, a great job, the phone, the kickstand, a pleasant and unexpected feature]
     # 105362  [a great stylus, i, the rubber tip ones, they, the mesh]
     # 21769   [the item, described, i, the protector, it, i, this product, anyone]
 
     # Manually
-    # 178468  [this case, a month, my resident, this case, a galaxy note 3, the case, my phone, the part of the case, the phone in the case, the part, this case, the bottom portion, you, the call on the case, the answer/disconnect on my phone, it, it, that amount, it, work, i, it, the trash]
+    # 178468  [this case, a month, my resident, this case, a galaxy note 3, the case, my phone, the part of the case, the phone in the case, the part, this case, the bottom portion, you, the call on the case, the answer/disconnect on my phone, it, it, that amount, it, i, it, the trash]
     # 84136   [a good sturdy tpu case with perfect cutouts, no buttons, the product, a tight fit, you, it, awesome case, i, my nexus, the wife, it, she, the case, great deal]
     # 189736  [an impressively sturdy case for the samsung galaxy s5 at an incredible price, the case, a great job, the phone, the kickstand, a pleasant and unexpected feature]
     # 105362  [a great stylus, i, the rubber tip ones, they, the mesh]
@@ -599,11 +624,17 @@ def extract_NP(posTagged):
         ADJLIST:
             {<ADJ> (<CC>? <,>? <ADJ>)*}
 
-        NOUN:
-            {<DT|PRP\$>? (<NN.*> <POS>)? <ADJLIST>? <NN.*>+}
+        ADJNOUN:
+            {<ADJLIST>? <NN.*>+}
+
+        PREFIXEDNOUN:
+            {<DT|PRP\$>? (<ADJNOUN> <POS>)* <ADJNOUN>}
+
+        PP:
+            {<IN><PREFIXEDNOUN>}
 
         NP:
-            {<NOUN> (<IN><NOUN>)*}
+            {<PREFIXEDNOUN> <PP>*}
             {<PRP>}
 
         """
