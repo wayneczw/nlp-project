@@ -1,6 +1,6 @@
 
 data/
-
+venv/
 utils/__pycache__/
 __pycache__/
 images/
