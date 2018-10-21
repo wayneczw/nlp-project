@@ -352,6 +352,7 @@ def it_score(df):
     nNeg = len(df[df['overall'].isin([1,2])])
     nPos = len(df[df['overall'].isin([4,5])])
     nN = nNeg + nPos
+    df = df.loc[df['overall'] != 3]
 
     lexicons = set()
     rtf_dict1 = Counter()
