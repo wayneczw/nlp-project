@@ -264,16 +264,19 @@ def extract_NP(posTagged):
 
 
 def probabilistic_score(df):
+    def _flatten_tokens(token_series):
+        return [word for token_list in token_series for word in token_list]
+
     def _nwr(nwh, nwl, gamma=4):
         return gamma * nwh + nwl
 
     def _word_give_tag(nwr, sum_nwr, k):
         return ((nwr  / sum_nwr) + 1) / (k + 1)
 
-    pos_rev5 = flatten_tokens(df.loc[df['overall'] == 5]['words'])
-    pos_rev4 = flatten_tokens(df.loc[df['overall'] == 4]['words'])
-    neg_rev2 = flatten_tokens(df.loc[df['overall'] == 2]['words'])
-    neg_rev1 = flatten_tokens(df.loc[df['overall'] == 1]['words'])
+    pos_rev5 = _flatten_tokens(df.loc[df['overall'] == 5]['words'])
+    pos_rev4 = _flatten_tokens(df.loc[df['overall'] == 4]['words'])
+    neg_rev2 = _flatten_tokens(df.loc[df['overall'] == 2]['words'])
+    neg_rev1 = _flatten_tokens(df.loc[df['overall'] == 1]['words'])
 
     words = set()
     pos_words = set()
@@ -349,13 +352,6 @@ def probabilistic_score(df):
     return OrderedDict(sorted(score_dict.items(), key=lambda t: t[1], reverse=True))
 #end def
 
-
-def flatten_tokens(token_series):
-    l = []
-    for token_list in token_series:
-        l += [word for word in token_list]
-
-    return l
 
 def it_score(df):
     nNeg = len(df[df['overall'].isin([1,2])])
