@@ -64,20 +64,15 @@ def main(data_file, seed):
     df['tokens'] = df['tokenizedSentences'].apply(flatten)
     df['words'] = df['tokens'].apply(lambda tokens: [token.lower() for token in tokens])
     df['words'] = df['words'].apply(lambda tokens: [token for token in tokens if is_word(token)])
-
  
-    it_score_dict = it_score(df)
-   
+    it_score_dict = it_score(df)  
     probabilistic_score_dict = probabilistic_score(df)
-
     word_score_dict = dict()
     for word in probabilistic_score_dict.keys():
         word_score_dict[word] = (probabilistic_score_dict[word] + it_score_dict[word]) / 2
 
     orderd_word_score_dict = OrderedDict(sorted(word_score_dict.items(), key=lambda t: t[1], reverse=True))
-    # print(orderd_word_score_dict.items())
     pd.DataFrame.from_dict(orderd_word_score_dict, orient="index").to_csv("./rep_words/rep_words.csv")
-
 #end def
 
 
@@ -359,47 +354,32 @@ def it_score(df):
     nN = nNeg + nPos
 
     lexicons = set()
-    rtf_dict1 = {}
-    rtf_dict2 = {}
-    rtf_dict4 = {}
-    rtf_dict5 = {}
-    document_frequency_dict = {}
+    rtf_dict1 = Counter()
+    rtf_dict2 = Counter()
+    rtf_dict4 = Counter()
+    rtf_dict5 = Counter()
+    df_count = Counter()
 
     for index, row in df.iterrows():
         counter = Counter(row['words'])
         reviewLength = sum(counter.values())
         for key in counter.keys():
             lexicons.add(key)
-            try:
-                document_frequency_dict[key] += 1
-            except:
-                document_frequency_dict[key] = 1
+            df_count[key] += 1
             if row['overall'] == 1:
-                try:
-                    rtf_dict1[key] += (counter[key]/reviewLength)
-                except:
-                    rtf_dict1[key] = counter[key]/reviewLength
+                rtf_dict1[key] += (counter[key]/reviewLength)
             elif row['overall'] == 2:
-                try:
-                    rtf_dict2[key] += (counter[key]/reviewLength)
-                except:
-                    rtf_dict2[key] = counter[key]/reviewLength
+                rtf_dict2[key] += (counter[key]/reviewLength)
             elif row['overall'] == 4:
-                try:
-                    rtf_dict4[key] += (counter[key]/reviewLength)
-                except:
-                    rtf_dict4[key] = counter[key]/reviewLength
+                rtf_dict4[key] += (counter[key]/reviewLength)
             elif row['overall'] == 5:
-                try:
-                    rtf_dict5[key] += (counter[key]/reviewLength)
-                except:
-                    rtf_dict5[key] = counter[key]/reviewLength
+                rtf_dict5[key] += (counter[key]/reviewLength)
 
-    score_it_dict = {}
+    score_it_dict = dict()
     for word in lexicons:
-        pos_word = 4 * (rtf_dict5.get(word,0)/nPos) * nN + rtf_dict4.get(word,0)/nPos * nN
-        neg_word = 4 * (rtf_dict1.get(word,0)/nNeg) * nN + rtf_dict2.get(word,0)/nNeg * nN
-        idf_word = math.log(nN/document_frequency_dict.get(word))
+        pos_word = 4 * (rtf_dict5.get(word, 0)/nPos) * nN + rtf_dict4.get(word, 0)/nPos * nN
+        neg_word = 4 * (rtf_dict1.get(word, 0)/nNeg) * nN + rtf_dict2.get(word, 0)/nNeg * nN
+        idf_word = math.log(nN/df_count.get(word))
         score_it_dict[word] = round((pos_word - neg_word) * idf_word, 3)
 
     return OrderedDict(sorted(score_it_dict.items(), key=lambda t: t[1], reverse=True))
