@@ -63,7 +63,7 @@ def main(data_file, seed):
         os.mkdir(REP_DIRECTORY)
 
     # df = df.sample(100)
-    
+
     stemmer = SnowballStemmer("english")
     df['sentences'] = df['reviewText'].apply(segment_sent)
 
@@ -156,7 +156,7 @@ def tokenize(sentence, word_tokenizer = ReviewTokenizer(), stemmer = None, lower
 
     return tokens
 
-def _convert_neg(tokens):
+def _convert_neg(tokens,window_size = 4):
     '''
         convert word to NEGATIVEword if there are negation words
         NEG_WORD_LIST,NEG_SENTENCE_BOUNDARY_LIST
@@ -170,7 +170,8 @@ def _convert_neg(tokens):
         # e.g. if token is negative word, the following words should be negated
         if NEG_WORD_RE.match(token):
             i += 1
-            while (i < n) :
+            i_window_limit = i + 4
+            while (i < n and i < i_window_limit) :
                 token = tokens[i]
                 if not NEG_SENT_BOUND_RE.match(token):
                     new_tokenized_list.append('neg_'+token)
@@ -308,7 +309,7 @@ def probabilistic_score(df):
         neg_words.add(word)
 
     kpos = len(pos_words)  # kpos
-    kneg = len(neg_words)  # kneg 
+    kneg = len(neg_words)  # kneg
     kdic = len(words)  # kdic
 
     # compute nwr dict
@@ -399,7 +400,7 @@ def sentiment_words(df, path="./rep_words/rep_words.csv", stemmer=None, convert_
     df['words'] = df['tokens'].apply(lambda tokens: [token.lower() for token in tokens])
     df['words'] = df['words'].apply(lambda tokens: [token for token in tokens if is_word(token)])
 
-    it_score_dict = it_score(df)  
+    it_score_dict = it_score(df)
     probabilistic_score_dict = probabilistic_score(df)
     word_score_dict = dict()
     for word in probabilistic_score_dict.keys():
