@@ -33,6 +33,7 @@ pd.set_option('display.max_columns', 10)
 
 DEFAULT_DATA_FILE = "./data/sample_data.json"
 IMAGES_DIRECTORY = './images'
+REP_DIRECTORY = './rep_words'
 DEFAULT_SEED = 42
 STOPWORDS = set(stopwords.words('english') + ["'ve", "'d", "'s", "one", "use", "would", "get", "also"]) - {'not', 'no', 'won', 'more', 'above', 'very', 'against', 'again'}
 PUNCTUATION = string.punctuation + '...'
@@ -56,23 +57,28 @@ def main(data_file, seed):
     # make directory for images
     if not os.path.exists(IMAGES_DIRECTORY):
         os.mkdir(IMAGES_DIRECTORY)
+
+    # make directory for representative words
+    if not os.path.exists(REP_DIRECTORY):
+        os.mkdir(REP_DIRECTORY)
+
+    # df = df.sample(100)
     
     stemmer = SnowballStemmer("english")
-    # df = df.sample(100)
     df['sentences'] = df['reviewText'].apply(segment_sent)
-    df['tokenizedSentences'] = df['sentences'].apply(lambda sentences: [tokenize(sentence, stemmer = stemmer, lower = True, remove_punc = True, remove_stopwords = True, remove_emoji = False, convert_neg=True) for sentence in sentences])
-    df['tokens'] = df['tokenizedSentences'].apply(flatten)
-    df['words'] = df['tokens'].apply(lambda tokens: [token.lower() for token in tokens])
-    df['words'] = df['words'].apply(lambda tokens: [token for token in tokens if is_word(token)])
- 
-    it_score_dict = it_score(df)  
-    probabilistic_score_dict = probabilistic_score(df)
-    word_score_dict = dict()
-    for word in probabilistic_score_dict.keys():
-        word_score_dict[word] = (probabilistic_score_dict[word] + it_score_dict[word]) / 2
 
-    orderd_word_score_dict = OrderedDict(sorted(word_score_dict.items(), key=lambda t: t[1], reverse=True))
-    pd.DataFrame.from_dict(orderd_word_score_dict, orient="index").to_csv("./rep_words/rep_words.csv")
+    # Without Stemming and Without Negation
+    sentiment_words(df, "./rep_words/ns_nn.csv")
+
+    # With Stemming and Without Negation
+    sentiment_words(df, "./rep_words/s_nn.csv", stemmer=stemmer)
+
+    # Without Stemming and With Negation
+    sentiment_words(df, "./rep_words/ns_n.csv", convert_neg=True)
+
+    # # With Stemming and With Negation
+    # sentiment_words(df, "./rep_words/s_n.csv", stemmer=stemmer, convert_neg=True)
+
 #end def
 
 
@@ -384,6 +390,23 @@ def it_score(df):
         score_it_dict[word] = round((pos_word - neg_word) * idf_word, 3)
 
     return OrderedDict(sorted(score_it_dict.items(), key=lambda t: t[1], reverse=True))
+#end def
+
+
+def sentiment_words(df, path="./rep_words/rep_words.csv", stemmer=None, convert_neg=False):
+    df['tokenizedSentences'] = df['sentences'].apply(lambda sentences: [tokenize(sentence, stemmer = stemmer, remove_punc = True, remove_stopwords = True, remove_emoji = False, convert_neg = convert_neg) for sentence in sentences])
+    df['tokens'] = df['tokenizedSentences'].apply(flatten)
+    df['words'] = df['tokens'].apply(lambda tokens: [token.lower() for token in tokens])
+    df['words'] = df['words'].apply(lambda tokens: [token for token in tokens if is_word(token)])
+
+    it_score_dict = it_score(df)  
+    probabilistic_score_dict = probabilistic_score(df)
+    word_score_dict = dict()
+    for word in probabilistic_score_dict.keys():
+        word_score_dict[word] = (probabilistic_score_dict[word] + it_score_dict[word]) / 2
+
+    orderd_word_score_dict = OrderedDict(sorted(word_score_dict.items(), key=lambda t: t[1], reverse=True))
+    pd.DataFrame.from_dict(orderd_word_score_dict, orient="index").to_csv(path)
 #end def
 
 
