@@ -567,10 +567,19 @@ def _convert_neg(tokens):
     return new_tokenized_list
 
 def sanitise(text):
-    # Append whitespace after punctuations, except .com
-    for p in '.?!':
-        regex = r'(?<=[^\d]+)\{}(?=[^ \W])(?!com)'.format(p)
-        text = re.sub(regex, p + ' ', text)
+
+    regex_list = [
+        # Append whitespace after punctuations, except .com
+        r'(?<=[^\d]+)\{}(?=[^ \W])(?!com)',
+        # Reduce repeated punctuations
+        r'(\s*\{}\s*)+'
+    ]
+
+    for regex_format in regex_list:
+        for p in '.?!':
+            regex = regex_format.format(p)
+            text = re.sub(regex, p + ' ', text)
+
     return text
 
 def segment_sent(text, emoji_tokenizer = TweetTokenizer()):
