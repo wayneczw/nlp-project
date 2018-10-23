@@ -68,16 +68,16 @@ def main(data_file, seed):
     df['sentences'] = df['reviewText'].apply(segment_sent)
 
     # Without Stemming and Without Negation
-    sentiment_words(df, "./rep_words/ns_nn.csv")
+    sentiment_score(df, "./rep_words/ns_nn.csv")
 
     # With Stemming and Without Negation
-    sentiment_words(df, "./rep_words/s_nn.csv", stemmer=stemmer)
+    sentiment_score(df, "./rep_words/s_nn.csv", stemmer=stemmer)
 
     # Without Stemming and With Negation
-    sentiment_words(df, "./rep_words/ns_n.csv", convert_neg=True)
+    sentiment_score(df, "./rep_words/ns_n.csv", convert_neg=True)
 
-    # # With Stemming and With Negation
-    # sentiment_words(df, "./rep_words/s_n.csv", stemmer=stemmer, convert_neg=True)
+    # With Stemming and With Negation
+    sentiment_score(df, "./rep_words/s_n.csv", stemmer=stemmer, convert_neg=True)
 
 #end def
 
@@ -394,7 +394,7 @@ def it_score(df):
 #end def
 
 
-def sentiment_words(df, path="./rep_words/rep_words.csv", stemmer=None, convert_neg=False):
+def sentiment_score(df, path="./rep_words/rep_words.csv", stemmer=None, convert_neg=False):
     df['tokenizedSentences'] = df['sentences'].apply(lambda sentences: [tokenize(sentence, stemmer = stemmer, remove_punc = True, remove_stopwords = True, remove_emoji = False, convert_neg = convert_neg) for sentence in sentences])
     df['tokens'] = df['tokenizedSentences'].apply(flatten)
     df['words'] = df['tokens'].apply(lambda tokens: [token.lower() for token in tokens])
