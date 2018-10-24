@@ -32,6 +32,7 @@ pd.set_option('display.max_columns', 10)
 
 DEFAULT_DATA_FILE = "./data/sample_data.json"
 IMAGES_DIRECTORY = './images'
+REP_DIRECTORY = './rep_words'
 DEFAULT_SEED = 42
 STOPWORDS = set(stopwords.words('english') + ["'ve", "'d", "'s", "one", "use", "would", "get", "also"]) - {'not', 'no', 'won', 'more', 'above', 'very', 'against', 'again'}
 PUNCTUATION = string.punctuation + '...'
@@ -55,6 +56,9 @@ def main(data_file, seed):
     # make directory for images
     if not os.path.exists(IMAGES_DIRECTORY):
         os.mkdir(IMAGES_DIRECTORY)
+    # make directory for representative words
+    if not os.path.exists(REP_DIRECTORY):
+        os.mkdir(REP_DIRECTORY)
 
     print_header('3.2.1 Popular Products and Frequent Reviewers', 50)
 
@@ -380,87 +384,18 @@ def main(data_file, seed):
     # 3.4. Sentiment Word Detection
     print(str(datetime.datetime.now()).split('.')[0] + ': Start processing sentence segmentation')
 
-    print(str(datetime.datetime.now()).split('.')[0] + ': Start processing tokenizing')
-    # convert all the other words in a sentence with negation words to NOT_word
-    df['tokenizedNegSentences'] = df['sentences'].apply(lambda sentences: [tokenize(sentence, lower = True, remove_punc = True, remove_stopwords = False, convert_neg = True) for sentence in sentences])
-    df['negtokens'] = df['tokenizedNegSentences'].apply(flatten)
-    df['negtokens'] = df['negtokens'].apply(lambda tokens: list(set(tokens)))
+    # Without Stemming and Without Negation
+    sentiment_score(df, "./rep_words/ns_nn.csv")
 
-    print(str(datetime.datetime.now()).split('.')[0] + ': Finish processing tokenizing')
+    # With Stemming and Without Negation
+    sentiment_score(df, "./rep_words/s_nn.csv", stemmer=stemmer)
 
-    df_positive = df[df['overall'] > 3]
-    df_negative = df[df['overall'] < 3]
+    # Without Stemming and With Negation
+    sentiment_score(df, "./rep_words/ns_n.csv", convert_neg=True)
 
-    words_positive = flatten(df_positive['tokens'])
-    words_negative = flatten(df_negative['tokens'])
+    # With Stemming and With Negation
+    sentiment_score(df, "./rep_words/s_n.csv", stemmer=stemmer, convert_neg=True)
 
-    df_top1000_words_positive = pd.DataFrame.from_dict(Counter(words_positive), orient='index').\
-                reset_index().rename(columns = {'index': 'Word', 0: 'Count'}).\
-                sort_values(['Count'], ascending = False).head(1000).\
-                reset_index().drop(columns = ['index'])
-    df_top1000_words_negative = pd.DataFrame.from_dict(Counter(words_negative), orient='index').\
-                reset_index().rename(columns = {'index': 'Word', 0: 'Count'}).\
-                sort_values(['Count'], ascending = False).head(1000).\
-                reset_index().drop(columns = ['index'])
-
-    top1000_words_positive_set = set(df_top1000_words_positive['Word'])
-    top1000_words_negative_set = set(df_top1000_words_negative['Word'])
-    common_words = set.intersection(top1000_words_positive_set,top1000_words_negative_set)
-
-    top20_words_positive = df_top1000_words_positive[~df_top1000_words_positive['Word'].isin(common_words)].nlargest(20,'Count')
-    top20_words_negative = df_top1000_words_negative[~df_top1000_words_negative['Word'].isin(common_words)].nlargest(20,'Count')
-
-    print(str(datetime.datetime.now()).split('.')[0] + ': top 20 positive words')
-    print(top20_words_positive)
-
-    #     2018-10-05 14:59:56: top 20 positive words
-    #              Word  Count
-    # 222  highly        6946
-    # 311  protects      4823
-    # 366  sturdy        4003
-    # 373  durable       3910
-    # 404  loves         3545
-    # 405  tablet        3544
-    # 446  amazing       3254
-    # 452  recommended   3208
-    # 459  protected     3143
-    # 460  pleased       3143
-    # 462  provides      3141
-    # 464  handy         3121
-    # 472  allows        3077
-    # 475  neg_problems  3068
-    # 478  bulk          3037
-    # 481  provided      3001
-    # 492  gives         2921
-    # 499  nicely        2879
-    # 502  led           2855
-    # 525  travel        2664
-
-    print(str(datetime.datetime.now()).split('.')[0] + ': top 20 negative words')
-    print(top20_words_negative)
-
-    # 2018-10-05 14:59:57: top 20 negative words
-    #               Word  Count
-    # 200  disappointed   1192
-    # 211  waste          1115
-    # 228  return         1061
-    # 231  neg_buy        1049
-    # 238  neg_recommend  1028
-    # 272  neg_worth      914
-    # 323  poor           771
-    # 327  returned       765
-    # 334  stopped        738
-    # 370  apart          657
-    # 374  neg_again      652
-    # 386  unfortunately  631
-    # 395  useless        603
-    # 426  send           562
-    # 433  refund         545
-    # 437  fell           543
-    # 458  broken         514
-    # 476  flimsy         489
-    # 478  horrible       489
-    # 497  neg_money      467
 #end def
 
 
@@ -538,7 +473,7 @@ def tokenize(sentence, word_tokenizer = ReviewTokenizer(), stemmer = None, lower
 
     return tokens
 
-def _convert_neg(tokens):
+def _convert_neg(tokens,window_size = 4):
     '''
         convert word to NEGATIVEword if there are negation words
         NEG_WORD_LIST,NEG_SENTENCE_BOUNDARY_LIST
@@ -552,7 +487,8 @@ def _convert_neg(tokens):
         # e.g. if token is negative word, the following words should be negated
         if NEG_WORD_RE.match(token):
             i += 1
-            while (i < n) :
+            i_window_limit = i + 4
+            while (i < n and i < i_window_limit) :
                 token = tokens[i]
                 if not NEG_SENT_BOUND_RE.match(token):
                     new_tokenized_list.append('neg_'+token)
@@ -565,6 +501,8 @@ def _convert_neg(tokens):
         i += 1
     #end while
     return new_tokenized_list
+#end def
+
 
 def sanitise(text):
 
@@ -654,6 +592,151 @@ def extract_NP(posTagged):
         ne.append(' '.join([child[0] for child in tree.leaves()]))
     return ne
 
+
+def probabilistic_score(df):
+    def _flatten_tokens(token_series):
+        return [word for token_list in token_series for word in token_list]
+
+    def _nwr(nwh, nwl, gamma=4):
+        return gamma * nwh + nwl
+
+    def _word_give_tag(nwr, sum_nwr, k):
+        return ((nwr  / sum_nwr) + 1) / (k + 1)
+
+    pos_rev5 = _flatten_tokens(df.loc[df['overall'] == 5]['words'])
+    pos_rev4 = _flatten_tokens(df.loc[df['overall'] == 4]['words'])
+    neg_rev2 = _flatten_tokens(df.loc[df['overall'] == 2]['words'])
+    neg_rev1 = _flatten_tokens(df.loc[df['overall'] == 1]['words'])
+
+    words = set()
+    pos_words = set()
+    neg_words = set()
+
+    pos_count5 = Counter()
+    for word in pos_rev5:
+        pos_count5[word] += 1
+        words.add(word)
+        pos_words.add(word)
+
+    pos_count4 = Counter()
+    for word in pos_rev4:
+        pos_count4[word] += 1
+        words.add(word)
+        pos_words.add(word)
+
+    neg_count2 = Counter()
+    for word in neg_rev2:
+        neg_count2[word] += 1
+        words.add(word)
+        neg_words.add(word)
+
+    neg_count1 = Counter()
+    for word in neg_rev1:
+        neg_count1[word] += 1
+        words.add(word)
+        neg_words.add(word)
+
+    kpos = len(pos_words)  # kpos
+    kneg = len(neg_words)  # kneg
+    kdic = len(words)  # kdic
+
+    # compute nwr dict
+    pos_nwr_dict = dict()
+    sum_pos_nwr = 0
+    for word in pos_words:
+        nwh = pos_count5.get(word, 0)
+        nwl = pos_count4.get(word, 0)
+        nwr = _nwr(nwh=nwh, nwl=nwl)
+        sum_pos_nwr += nwr
+        pos_nwr_dict[word] = nwr
+
+    neg_nwr_dict = dict()
+    sum_neg_nwr = 0
+    for word in neg_words:
+        nwh = neg_count1.get(word, 0)
+        nwl = neg_count2.get(word, 0)
+        nwr = _nwr(nwh=nwh, nwl=nwl)
+        sum_neg_nwr += nwr
+        neg_nwr_dict[word] = nwr
+
+
+    p_pos = sum_pos_nwr # P(pos)
+    p_neg = sum_neg_nwr  # P(neg)
+
+    p_word_pos_dict = dict()
+    p_word_neg_dict = dict()
+    for word in words:
+        p_word_pos_dict[word] = _word_give_tag(pos_nwr_dict.get(word, 0), sum_pos_nwr, kpos)
+        p_word_neg_dict[word] = _word_give_tag(neg_nwr_dict.get(word, 0), sum_neg_nwr, kneg)
+
+    p_pos_word_dict = dict()
+    p_neg_word_dict = dict()
+    for word in words:
+        p_pos_word_dict[word] = (p_pos * p_word_pos_dict[word]) / (pos_nwr_dict.get(word, 0) + neg_nwr_dict.get(word, 0))
+        p_neg_word_dict[word] = (p_neg * p_word_neg_dict[word]) / (pos_nwr_dict.get(word, 0) + neg_nwr_dict.get(word, 0))
+
+    score_dict = dict()
+    for word in words:
+        score_dict[word] = round(p_pos_word_dict[word] - p_neg_word_dict[word], 3)
+
+    return OrderedDict(sorted(score_dict.items(), key=lambda t: t[1], reverse=True))
+#end def
+
+
+def it_score(df):
+    nNeg = len(df[df['overall'].isin([1,2])])
+    nPos = len(df[df['overall'].isin([4,5])])
+    nN = nNeg + nPos
+    df = df.loc[df['overall'] != 3]
+
+    lexicons = set()
+    rtf_dict1 = Counter()
+    rtf_dict2 = Counter()
+    rtf_dict4 = Counter()
+    rtf_dict5 = Counter()
+    df_count = Counter()
+
+    for index, row in df.iterrows():
+        counter = Counter(row['words'])
+        reviewLength = sum(counter.values())
+        for key in counter.keys():
+            lexicons.add(key)
+            df_count[key] += 1
+            if row['overall'] == 1:
+                rtf_dict1[key] += (counter[key]/reviewLength)
+            elif row['overall'] == 2:
+                rtf_dict2[key] += (counter[key]/reviewLength)
+            elif row['overall'] == 4:
+                rtf_dict4[key] += (counter[key]/reviewLength)
+            elif row['overall'] == 5:
+                rtf_dict5[key] += (counter[key]/reviewLength)
+
+    score_it_dict = dict()
+    for word in lexicons:
+        pos_word = 4 * (rtf_dict5.get(word, 0)/nPos) * nN + rtf_dict4.get(word, 0)/nPos * nN
+        neg_word = 4 * (rtf_dict1.get(word, 0)/nNeg) * nN + rtf_dict2.get(word, 0)/nNeg * nN
+        idf_word = math.log(nN/df_count.get(word))
+        score_it_dict[word] = round((pos_word - neg_word) * idf_word, 3)
+
+    return OrderedDict(sorted(score_it_dict.items(), key=lambda t: t[1], reverse=True))
+#end def
+
+
+def sentiment_score(df, path="./rep_words/rep_words.csv", stemmer=None, convert_neg=False):
+    df['tokenizedSentences'] = df['sentences'].apply(lambda sentences: [tokenize(sentence, stemmer = stemmer, remove_punc = True, remove_stopwords = True, remove_emoji = False, convert_neg = convert_neg) for sentence in sentences])
+    df['tokens'] = df['tokenizedSentences'].apply(flatten)
+    df['words'] = df['tokens'].apply(lambda tokens: [token.lower() for token in tokens])
+    df['words'] = df['words'].apply(lambda tokens: [token for token in tokens if is_word(token)])
+
+    it_score_dict = it_score(df)
+    probabilistic_score_dict = probabilistic_score(df)
+    word_score_dict = dict()
+    for word in probabilistic_score_dict.keys():
+        word_score_dict[word] = (probabilistic_score_dict[word] + it_score_dict[word]) / 2
+
+    orderd_word_score_dict = OrderedDict(sorted(word_score_dict.items(), key=lambda t: t[1], reverse=True))
+    pd.DataFrame.from_dict(orderd_word_score_dict, orient="index").to_csv(path)
+#end def
 def print_header(text, width = 30, char = '='):
     print('\n' + char * width)
     print(text)
