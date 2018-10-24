@@ -737,6 +737,8 @@ def sentiment_score(df, path="./rep_words/rep_words.csv", stemmer=None, convert_
     orderd_word_score_dict = OrderedDict(sorted(word_score_dict.items(), key=lambda t: t[1], reverse=True))
     pd.DataFrame.from_dict(orderd_word_score_dict, orient="index").to_csv(path)
 #end def
+
+
 def print_header(text, width = 30, char = '='):
     print('\n' + char * width)
     print(text)
