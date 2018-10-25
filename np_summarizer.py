@@ -146,10 +146,19 @@ def _convert_neg(tokens):
     return new_tokenized_list
 
 def sanitise(text):
-    # Append whitespace after punctuations, except .com
-    for p in '.?!':
-        regex = r'(?<=[^\d]+)\{}(?=[^ \W])(?!com)'.format(p)
-        text = re.sub(regex, p + ' ', text)
+
+    regex_list = [
+        # Append whitespace after punctuations, except .com
+        r'(?<=[^\d]+)\{}(?=[^ \W])(?!com)',
+        # Reduce repeated punctuations
+        r'(\s*\{}\s*)+'
+    ]
+
+    for regex_format in regex_list:
+        for p in '.?!':
+            regex = regex_format.format(p)
+            text = re.sub(regex, p + ' ', text)
+
     return text
 
 def segment_sent(text, emoji_tokenizer = TweetTokenizer()):
@@ -177,6 +186,24 @@ def segment_sent(text, emoji_tokenizer = TweetTokenizer()):
             sentences = sentences[:-1]
     return sentences
 
+def plot_bar_overlap(df, columns, title, x_label, y_label, countplot = True):
+    sns.set(font_scale = 1.5)
+
+    fig, ax = plt.subplots()
+    for col in columns:
+        if countplot:
+            sns.countplot(df[col], ax=ax, label = col)
+        else:
+            sns.distplot(df[col], ax=ax, kde=False, label = col)
+
+    plt.legend(loc='upper right')
+    plt.title(title, loc = 'center', y=1.08, fontsize = 30)
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    saved_path = os.path.join(IMAGES_DIRECTORY, title.lower().replace(' ', '_'))
+    fig.savefig(saved_path, dpi=200, bbox_inches="tight")
+    print('Saved ' + saved_path)
+    plt.close()
 
 
 def extract_NP(posTagged):
@@ -198,7 +225,7 @@ def extract_NP(posTagged):
             {<IN><PREFIXEDNOUN>}
 
         NP:
-            {<PREFIXEDNOUN> (<IN><PREFIXEDNOUN>)*}
+            {<PREFIXEDNOUN> (<PP>)*}
             {<PRP>}
 
         """
@@ -239,34 +266,59 @@ df = pd.DataFrame.from_dict(data)
 df = df.drop(columns = ['overall', 'reviewTime', 'summary', 'unixReviewTime'])
 
 
-
-
 df['sentences'] = df['reviewText'].apply(segment_sent)
 df['tokenizedSentences'] = df['sentences'].apply(lambda sentences: [tokenize(sentence) for sentence in sentences])
+# df['tokens'] = df['tokenizedSentences'].apply(flatten)
+
+# df['words'] = df['tokens'].apply(lambda tokens: [token.lower() for token in tokens])
+# df['words'] = df['words'].apply(lambda tokens: [token for token in tokens if is_word(token)])
+# df['uniqueWords'] = df['words'].apply(set)
+# df['wordCount'] = df['uniqueWords'].apply(len)
+#
+# words = flatten(df['words'])
+# words_unique = flatten(df['uniqueWords'])
+#
+# stemmer = SnowballStemmer("english")
+# df['stemmedWords'] = df['words'].apply(lambda tokens: [stemmer.stem(token) for token in tokens]).apply(set)
+# df['uniqueStemmedWords'] = df['stemmedWords'].apply(set)
+# df['stemmedWordCount'] = df['uniqueStemmedWords'].apply(len)
+#
+# stemmed_words = flatten(df['stemmedWords'])
+# stemmed_words_unique = flatten(df['uniqueStemmedWords'])
+
+
 df['posTagged'] = df['tokenizedSentences'].apply(lambda tokenizedSentences: [pos_tag(sentence) for sentence in tokenizedSentences])
 df['nounPhrases'] = df['posTagged'].apply(lambda posTagged: [np.lower() for np in flatten([extract_NP(tag) for tag in posTagged])])
 df[['reviewText', 'posTagged', 'nounPhrases']].head()
-df.head()
-seed = 42
-random_5_reviews = df[['reviewText', 'posTagged', 'nounPhrases']].sample(5, random_state = seed)
-print(random_5_reviews)
+
+
+# df.head()
+# seed = 42
+# random_5_reviews = df[['reviewText', 'posTagged', 'nounPhrases']].sample(5, random_state = seed)
+# print(random_5_reviews)
 
 
 # sentences_df = pd.DataFrame(pd.Series(flatten(df['tokenizedSentences'])), columns = ['sentence']).reset_index().drop(columns = ['index'])
 # sentences_df['posTagged'] = sentences_df['sentence'].apply(pos_tag)
 # sentences_df['tags'] = sentences_df['posTagged'].apply(lambda posTagged: [tag[1] for tag in posTagged])
 # sentences_df.to_csv('data/posTagged.csv', index = False)
+# sentences_df['noun_phrases'] = sentences_df['posTagged'].apply(extract_NP)
 
 # sentences_df = pd.read_csv('data/posTagged.csv')
 # sentences_df.head()
-# sentences_df['noun_phrases'] = sentences_df['posTagged'].apply(extract_NP)
-
-# sentences_df[sentences_df['tags'].apply(lambda tags: True if "'JJ', 'CC', 'JJ', 'NN'" in tags else False)].head(10)
-# sentences_df[sentences_df['tags'].apply(lambda tags: True if "'JJ', 'CC', 'VBG', 'NN'" in tags else False)].head(10)
-# sentences_df[sentences_df['tags'].apply(lambda tags: True if "'RBS', 'JJ', 'NN'" in tags else False)].head(10)
-# sentences_df[sentences_df['tags'].apply(lambda tags: True if "'RB', 'VBG', 'NN'" in tags else False)].head(10)
-# sentences_df[sentences_df['tags'].apply(lambda tags: True if "'NN', 'POS', 'NN'" in tags else False)].head(10)
-
+#
+# sentences_df[sentences_df['tags'].apply(lambda tags: True if "'RB', 'VBG', 'NN'" in tags else False)].head(3)
+# sentences_df[sentences_df['tags'].apply(lambda tags: True if "'RB', 'JJ'" in tags else False)].head(3)
+# sentences_df[sentences_df['tags'].apply(lambda tags: True if "'JJ', 'CC', 'JJ', 'NN'" in tags else False)].head(5)
+# sentences_df[sentences_df['tags'].apply(lambda tags: True if "'JJ', ',', 'JJ', 'NN'" in tags else False)].head(5)
+# sentences_df[sentences_df['tags'].apply(lambda tags: True if "'JJ', 'CC', 'JJ', 'NN', 'NN'" in tags else False)].head(5)
+# sentences_df[sentences_df['tags'].apply(lambda tags: True if "'DT', 'JJ', 'NN', 'POS', 'JJ', 'NN'" in tags else False)].head(3)
+# sentences_df[sentences_df['tags'].apply(lambda tags: True if "'PRP$', 'NN', 'POS', 'NN', 'POS', 'NN'" in tags else False)].head(3)
+# sentences_df[sentences_df['tags'].apply(lambda tags: True if "'DT', 'JJR', 'NN'" in tags else False)].head(3)
+# sentences_df[sentences_df['tags'].apply(lambda tags: True if "'NN', 'IN', 'DT', 'JJ', 'NN'" in tags else False)].head(3)
+# sentences_df[sentences_df['tags'].apply(lambda tags: True if "'DT', 'NN', 'IN', 'NN', 'IN', 'NN'" in tags else False)].head(3)
+# extract_NP(pos_tag(tokenize('The light text might also be an issue for someone with vision problems')))
+# extract_NP(pos_tag(tokenize('the idea of the design')))
 
 
 # class EmojiTokenizer(TreebankWordTokenizer):

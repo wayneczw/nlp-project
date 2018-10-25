@@ -29,6 +29,7 @@ plt.rcParams.update(params)
 
 pd.set_option('display.max_colwidth', -1)
 pd.set_option('display.max_columns', 10)
+pd.set_option("display.max_rows", 999)
 
 DEFAULT_DATA_FILE = "./data/sample_data.json"
 IMAGES_DIRECTORY = './images'
@@ -130,6 +131,8 @@ def main(data_file, seed):
             x_label = "Word Count (Clipped)", y_label = "Review Count", countplot = False)
 
     words = flatten(df['words'])
+    words_unique = flatten(df['uniqueWords'])
+
     top_20_words = pd.DataFrame.from_dict(Counter(words), orient='index').\
                 reset_index().rename(columns = {'index': 'Word', 0: 'Count'}).\
                 sort_values(['Count'], ascending = False).head(20).\
@@ -141,7 +144,8 @@ def main(data_file, seed):
     ### With Stemming
     print_header('With Stemming', char = '-')
     stemmer = SnowballStemmer("english")
-    df['uniqueStemmedWords'] = df['uniqueWords'].apply(lambda tokens: [stemmer.stem(token) for token in tokens]).apply(set)
+    df['stemmedWords'] = df['words'].apply(lambda tokens: [stemmer.stem(token) for token in tokens]).apply(set)
+    df['uniqueStemmedWords'] = df['stemmedWords'].apply(set)
     df['stemmedWordCount'] = df['uniqueStemmedWords'].apply(len)
 
     plot_bar(df['stemmedWordCount'], \
@@ -151,7 +155,18 @@ def main(data_file, seed):
             title = 'Distribution of Number of Words for Each Review With Stemming (Clipped)', \
             x_label = "Word Count (Clipped)", y_label = "Review Count", countplot = False)
 
-    stemmed_words = flatten(df['uniqueStemmedWords'])
+    plot_bar_overlap(df, ['wordCount', 'stemmedWordCount'], \
+            title = 'Distribution of Number of Words for Each Review', \
+            x_label = "Word Count", y_label = "Review Count", countplot = False)
+
+    plot_bar_overlap(df, ['wordCount', 'stemmedWordCount'], \
+            title = 'Distribution of Number of Words for Each Review (Clipped)', \
+            x_label = "Word Count", y_label = "Review Count", countplot = False)
+
+
+    stemmed_words = flatten(df['stemmedWords'])
+    stemmed_words_unique = flatten(df['uniqueStemmedWords'])
+
     top_20_stemmed_words = pd.DataFrame.from_dict(Counter(stemmed_words), orient='index').\
                 reset_index().rename(columns = {'index': 'Word', 0: 'Count'}).\
                 sort_values(['Count'], ascending = False).head(20).\
@@ -621,6 +636,25 @@ def plot_bar(number_list, title, x_label, y_label, countplot = True):
     plt.tight_layout()
     saved_path = os.path.join(IMAGES_DIRECTORY, title.lower().replace(' ', '_'))
     fig.get_figure().savefig(saved_path, dpi=200, bbox_inches="tight")
+    print('Saved ' + saved_path)
+    plt.close()
+
+def plot_bar_overlap(df, columns, title, x_label, y_label, countplot = True):
+    sns.set(font_scale = 1.5)
+
+    fig, ax = plt.subplots()
+    for col in columns:
+        if countplot:
+            sns.countplot(df[col], ax=ax, label = col)
+        else:
+            sns.distplot(df[col], ax=ax, kde=False, label = col)
+
+    plt.legend(loc='upper right')
+    plt.title(title, loc = 'center', y=1.08, fontsize = 30)
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    saved_path = os.path.join(IMAGES_DIRECTORY, title.lower().replace(' ', '_'))
+    fig.savefig(saved_path, dpi=200, bbox_inches="tight")
     print('Saved ' + saved_path)
     plt.close()
 
