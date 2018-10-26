@@ -186,6 +186,23 @@ def segment_sent(text, emoji_tokenizer = TweetTokenizer()):
             sentences = sentences[:-1]
     return sentences
 
+def plot_bar(number_list, title, x_label, y_label, countplot = True):
+    sns.set(font_scale = 1.5)
+
+    if countplot:
+        fig = sns.countplot(number_list, color = 'c')
+    else:
+        fig = sns.distplot(number_list, color = 'c', kde = False)
+
+    plt.title(title, loc = 'center', y=1.08, fontsize = 30)
+    fig.set_xlabel(x_label)
+    fig.set_ylabel(y_label)
+    plt.tight_layout()
+    saved_path = os.path.join(IMAGES_DIRECTORY, title.lower().replace(' ', '_'))
+    fig.get_figure().savefig(saved_path, dpi=200, bbox_inches="tight")
+    print('Saved ' + saved_path)
+    plt.close()
+
 def plot_bar_overlap(df, columns, title, x_label, y_label, countplot = True):
     sns.set(font_scale = 1.5)
 
@@ -236,9 +253,6 @@ def extract_NP(posTagged):
         ne.append(' '.join([child[0] for child in tree.leaves()]))
     return ne
 
-def preprocessSentence(sentence):
-    return tokenize(sentence, lower = True, remove_stopwords = True, remove_punc = True)
-
 
 
 data_path = "./data/CellPhoneReview.json"
@@ -250,10 +264,64 @@ with open(data_path) as f:
 df = pd.DataFrame.from_dict(data)
 df = df.drop(columns = ['overall', 'reviewTime', 'summary', 'unixReviewTime'])
 
+iac_df = pd.read_csv('implicit_aspect_corpus.csv')
+iac_df[iac_df.duplicated(subset = ['implicit'])]
+aspects = list(iac_df['aspect'].unique())
+
+df['asin'].unique()
+productID = '6073894996'
+
+df = df[df['asin'] == productID]
 df['sentences'] = df['reviewText'].apply(segment_sent)
 df['tokenizedSentences'] = df['sentences'].apply(lambda sentences: [tokenize(sentence) for sentence in sentences])
-df['cleanedTokenizedSentences'] = df['sentences'].apply(lambda sentences: [preprocessSentence(sentence) for sentence in sentences])
-cleanedTokenizedSentences = flatten(df['cleanedTokenizedSentences'])
+df['tokens'] = df['tokenizedSentences'].apply(flatten)
+df['words'] = df['tokens'].apply(lambda tokens: [token.lower() for token in tokens])
+df['words'] = df['words'].apply(lambda tokens: [token for token in tokens if is_word(token)])
+
+for aspect in aspects:
+    df[aspect] = df['words'].apply(lambda words: [word for word in words if word in list(iac_df[iac_df['aspect'] == aspect]['implicit'])])
+df.head()
+
+product_df = df.groupby('asin')[aspects].sum().reset_index()
+
+for aspect in aspects:
+    aspect_df = iac_df[iac_df['aspect'] == aspect]
+    aspect_dict = dict(zip(aspect_df['implicit'], aspect_df['polarity_intense']))
+    product_df[aspect + '_scores'] = product_df[aspect].apply(lambda aspect: [aspect_dict[word] for word in aspect])
+
+aspect_list = []
+aspect_score_list = []
+
+
+for aspect in aspects:
+    for score in product_df[product_df['asin'] == productID].iloc[0].to_dict()[aspect + '_scores']:
+        aspect_list.append(aspect)
+        aspect_score_list.append(score)
+
+aspect_score_df = pd.DataFrame(data = {'aspect': aspect_list, 'score': aspect_score_list})
+plot_bar(aspect_score_df, title = 'Aspect Scores for ' + productID, x_label = 'aspect', y_label = 'score')
+
+def plot_bar(df, title, x_label, y_label):
+    sns.set(font_scale = 1.5)
+    fig = sns.boxplot(x="aspect", y="score", data=df)
+
+    plt.title(title, loc = 'center', y=1.08, fontsize = 30)
+    fig.set_xlabel(x_label)
+    fig.set_ylabel(y_label)
+    plt.tight_layout()
+    saved_path = os.path.join(IMAGES_DIRECTORY, title.lower().replace(' ', '_'))
+    fig.get_figure().savefig(saved_path, dpi=200, bbox_inches="tight")
+    print('Saved ' + saved_path)
+    plt.close()
+
+
+review = df.iloc[0]['words']
+review
+df['sentences'].iloc[0]
+implicit_aspect_words = [word for word in review if word in list(iac_df['implicit'])]
+iac_df[iac_df['implicit'].isin(implicit_aspect_words)]
+iac_df[iac_df['implicit'].isin(implicit_aspect_words)].groupby('aspect')['polarity_intense'].sum().reset_index()
+
 
 df['posTagged'] = df['tokenizedSentences'].apply(lambda tokenizedSentences: [pos_tag(sentence) for sentence in tokenizedSentences])
 df['nounPhrases'] = df['posTagged'].apply(lambda posTagged: [np.lower() for np in flatten([extract_NP(tag) for tag in posTagged])])
