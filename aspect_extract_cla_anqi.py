@@ -236,105 +236,8 @@ def extract_NP(posTagged):
         ne.append(' '.join([child[0] for child in tree.leaves()]))
     return ne
 
-
-# get the intersection between two sentences
-def getIntersection(s1, s2):
-    global title
-    s1 = set(s1)
-    s2 = set(s2)
-
-    # if the sentences are empty the rank of this will be 0
-    if (len(s1) + len(s2)) == 0:
-        return 0
-
-    # returning the score of the sentence s1 wrt s2
-    return len(s1 & s2)/((len(s1) + len(s2))/2)
-
-def getWMD(s1, s2):
-    return word2vec_model.wv.wmdistance(s1, s2)
-
-
-# create a key for an object from a sentence
-def sentenceKey(sentence):
-    sentence = re.sub(r'\W+', '', sentence)
-    return sentence
-
 def preprocessSentence(sentence):
     return tokenize(sentence, lower = True, remove_stopwords = True, remove_punc = True)
-
-def rankSentences(sentences, distanceFunction):
-
-    n = len(sentences)
-
-    # Create the sentence adjacency matrix
-    values = np.zeros((n, n))
-    for i in range(n):
-        for j in range(n):
-            values[i][j] = distanceFunction(sentences[i], sentences[j])
-
-    # create sentence adjacency matrix
-    values = np.dot(values, (np.ones((n,n)) - np.eye(n)))
-    score = np.sum(values, axis=1)
-    sentenceScore = {i:score[i] for i in range(n)}
-    print('Finish computing distance.')
-
-    return sentenceScore
-
-def rankNP(sentences, noun_phrases, distanceFunction):
-
-    n = len(sentences)
-    m = len(noun_phrases)
-
-    # Create the sentence adjacency matrix
-    values = np.zeros((n, m))
-    for i in range(n):
-        for j in range(m):
-            values[i][j] = distanceFunction(sentences[i], noun_phrases[j])
-
-    # create sentence adjacency matrix
-    score = np.sum(values, axis=0)
-    nounPhrasesScore = {i:score[i] for i in range(m)}
-    print('Finish computing distance.')
-
-    return nounPhrasesScore
-
-
-# get the best sentence
-def getBestSentences(sentences, sentenceScore, limit = 5):
-
-    selected_indixes = sorted(sentenceScore, key=sentenceScore.get, reverse=True)[:limit]
-    # selected_indixes = sorted(sentenceScore, key=sentenceScore.get)[:limit]
-    return [sentences[i] for i in selected_indixes]
-
-
-def doSummary(content):
-    sentences = segment_sent(content)
-    processedSentences = [preprocessSentence(sentence) for sentence in sentences]
-
-    sentenceScore = rankSentences(sentences, getIntersection)
-    summary = getBestSentences(sentences, sentenceScore)
-    return summary
-
-
-def summarize_by_cos(content):
-    sentences = segment_sent(content)
-    processedSentences = [preprocessSentence(sentence) for sentence in sentences]
-    processedSentences = [' '.join(sentence) for sentence in processedSentences]
-
-    from sklearn.feature_extraction.text import TfidfVectorizer
-    tfidf_vectorizer = TfidfVectorizer()
-    tfidf_matrix = tfidf_vectorizer.fit_transform(processedSentences)
-
-    from sklearn.metrics.pairwise import cosine_similarity
-    values = cosine_similarity(tfidf_matrix, tfidf_matrix)
-    n = values.shape[0]
-    values = np.dot(values, (np.ones((n,n)) - np.eye(n)))
-    score = np.sum(values, axis=1)
-    sentenceScore = {i:score[i] for i in range(n)}
-
-    selected_indixes = sorted(sentenceScore, key=sentenceScore.get, reverse=True)[:5]
-    selected_indixes
-    return [sentences[i] for i in selected_indixes]
 
 
 
@@ -347,8 +250,6 @@ with open(data_path) as f:
 df = pd.DataFrame.from_dict(data)
 df = df.drop(columns = ['overall', 'reviewTime', 'summary', 'unixReviewTime'])
 
-df = df[:10000]
-
 df['sentences'] = df['reviewText'].apply(segment_sent)
 df['tokenizedSentences'] = df['sentences'].apply(lambda sentences: [tokenize(sentence) for sentence in sentences])
 df['cleanedTokenizedSentences'] = df['sentences'].apply(lambda sentences: [preprocessSentence(sentence) for sentence in sentences])
@@ -357,69 +258,3 @@ cleanedTokenizedSentences = flatten(df['cleanedTokenizedSentences'])
 df['posTagged'] = df['tokenizedSentences'].apply(lambda tokenizedSentences: [pos_tag(sentence) for sentence in tokenizedSentences])
 df['nounPhrases'] = df['posTagged'].apply(lambda posTagged: [np.lower() for np in flatten([extract_NP(tag) for tag in posTagged])])
 df['uniqueNounPhrases'] = df['nounPhrases'].apply(set).apply(list)
-
-import gensim
-word2vec_model = gensim.models.Word2Vec(
-    cleanedTokenizedSentences,
-    seed=42,
-    workers=10,
-    size=150,
-    min_count=2,
-    window=10)
-
-# NP Summary Per Review
-# word2vec_model.train(sentences=cleanedTokenizedSentences, total_examples=len(cleanedTokenizedSentences), epochs=10)
-# word2vec_model.save("word2vec_model1.w2v")
-# print("Model saved")
-# word2vec_model = gensim.models.Word2Vec.load("word2vec_model1.w2v")
-# print("Model loaded")
-#
-# word2vec_model.wv.most_similar(positive = 'good')
-# word2vec_model.wv.wmdistance(tokenize('fantastic phone'), tokenize('good phone'))
-# word2vec_model.wv.wmdistance(tokenize('bad'), tokenize('good'))
-# word2vec_model.wv.wmdistance(tokenize(df['sentences'].iloc[0][0]), tokenize(df['sentences'].iloc[0][1]))
-#
-# df.iloc[0]['cleanedTokenizedSentences']
-# df.iloc[0]['uniqueNounPhrases']
-# rankNP(df.iloc[0]['cleanedTokenizedSentences'], df.iloc[0]['uniqueNounPhrases'], getWMD)
-
-# Sentence Summary Per Review
-# df['summary'] = df['reviewText'].apply(summarize_by_cos)
-# df[['reviewText', 'summary']]
-
-# Sentence Summary Per Product
-# product_df = df.groupby('asin')['reviewText'].sum().reset_index()
-# product_df['summary'] = product_df['reviewText'].apply(summarize_by_cos)
-
-
-
-# from sumy.summarizers.lsa import LsaSummarizer as Summarizer
-# from sumy.utils import get_stop_words
-# from sumy.nlp.stemmers import Stemmer
-# from sumy.nlp.tokenizers import Tokenizer
-# from sumy.parsers.plaintext import PlaintextParser
-#
-# parser = PlaintextParser.from_string(' '.join(segment_sent(content)), Tokenizer('english'))
-# stemmer = Stemmer('english')
-# summarizer = Summarizer(stemmer)
-# summarizer.stop_words = get_stop_words('english')
-# for sentence in summarizer(parser.document, 5):
-#     print(sentence)
-
-# import gensim
-# word2vec_model = gensim.models.Word2Vec(
-#     processedSentences,
-#     seed=42,
-#     workers=10,
-#     size=150,
-#     min_count=2,
-#     window=10)
-#
-# word2vec_model.train(sentences=processedSentences, total_examples=len(processedSentences), epochs=10)
-# word2vec_model.wv.wmdistance(tokenize('nice phone'), tokenize('good phone'))
-# word2vec_model.wv.wmdistance(processedSentences[0], processedSentences[1])
-#
-# word2vec_model.save("word2vec_model1.w2v")
-# print("Model saved")
-# word2vec_model = gensim.models.Word2Vec.load("word2vec_model1.w2v")
-# print("Model loaded")

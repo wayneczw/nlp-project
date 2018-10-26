@@ -7,3 +7,5 @@ __pycache__/
 images/
 
 *.w2v
+
+IACcorpus/
