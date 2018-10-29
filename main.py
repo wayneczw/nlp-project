@@ -148,7 +148,7 @@ def main(data_file, seed):
     ### With Stemming
     print_header('With Stemming', char = '-')
     stemmer = SnowballStemmer("english")
-    df['stemmedWords'] = df['words'].apply(lambda tokens: [stemmer.stem(token) for token in tokens]).apply(set)
+    df['stemmedWords'] = df['words'].apply(lambda tokens: [stemmer.stem(token) for token in tokens])
     df['uniqueStemmedWords'] = df['stemmedWords'].apply(set)
     df['stemmedWordCount'] = df['uniqueStemmedWords'].apply(len)
 
