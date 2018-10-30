@@ -222,9 +222,9 @@ def plot_bar_overlap(df, columns, title, x_label, y_label, countplot = True):
     print('Saved ' + saved_path)
     plt.close()
 
-def plot_bar(aspect_score_df, title, x_label, y_label):
+def plot_bar(aspect_score_df, title, x_label, y_label, showfliers=True):
     sns.set(font_scale = 1.5)
-    fig = sns.boxplot(x="aspect", y="score", data=aspect_score_df)
+    fig = sns.boxplot(x="aspect", y="score", data=aspect_score_df, showfliers=showfliers)
 
     plt.title(title, loc = 'center', y=1.08, fontsize = 30)
     fig.set_xlabel(x_label)
@@ -268,7 +268,7 @@ def extract_NP(posTagged):
 
 
 data_path = "./data/CellPhoneReview.json"
-data_path = "./data/sample_data.json"
+# data_path = "./data/sample_data.json"
 data = []
 with open(data_path) as f:
     for line in f:
@@ -277,11 +277,16 @@ df = pd.DataFrame.from_dict(data)
 df = df.drop(columns = ['overall', 'reviewTime', 'summary', 'unixReviewTime'])
 
 iac_df = pd.read_csv('implicit_aspect_corpus.csv')
-iac_df[iac_df.duplicated(subset = ['implicit'])]
 aspects = list(iac_df['aspect'].unique())
 
-df['asin'].unique()
-productID = '6073894996'
+df['asin'].value_counts().head()
+# B005SUHPO6    836
+# B0042FV2SI    690
+# B008OHNZI0    657
+# B009RXU59C    634
+# B000S5Q9CA    627
+# Name: asin, dtype: int64
+productID = 'B005SUHPO6'
 
 df = df[df['asin'] == productID]
 df['sentences'] = df['reviewText'].apply(segment_sent)
@@ -289,6 +294,14 @@ df['tokenizedSentences'] = df['sentences'].apply(lambda sentences: [tokenize(sen
 df['tokens'] = df['tokenizedSentences'].apply(flatten)
 df['words'] = df['tokens'].apply(lambda tokens: [token.lower() for token in tokens])
 df['words'] = df['words'].apply(lambda tokens: [token for token in tokens if is_word(token)])
+
+# aspect = 'performance'
+# df[df['words'].apply(lambda words: True if aspect in words else False)][['sentences']]
+# df = df[df['words'].apply(lambda words: True if aspect in words else False)].iloc[-2:-1]
+# df[['sentences']]
+#
+# product_df[aspects]
+# aspect_score_df
 
 for aspect in aspects:
     df[aspect] = df['words'].apply(lambda words: [word for word in words if word in list(iac_df[iac_df['aspect'] == aspect]['implicit'])])
@@ -309,4 +322,5 @@ for aspect in aspects:
         aspect_score_list.append(score)
 
 aspect_score_df = pd.DataFrame(data = {'aspect': aspect_list, 'score': aspect_score_list})
-plot_bar(aspect_score_df, title = 'Aspect Scores for ' + productID, x_label = 'aspect', y_label = 'score')
+plot_bar(aspect_score_df, title = 'Aspect Scores for ' + productID + ' with outlier', x_label = 'aspect', y_label = 'score', showfliers=True)
+plot_bar(aspect_score_df, title = 'Aspect Scores for ' + productID , x_label = 'aspect', y_label = 'score', showfliers=False)

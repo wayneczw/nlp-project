@@ -116,7 +116,7 @@ def main(data_file, seed):
     # get 5 random reviews to do sentence segmentation and display results
     reviews = df['reviewText']
     _seed = 43 # To give us an interesting result
-    random_reviews = reviews.sample(5, random_state = _seed) 
+    random_reviews = reviews.sample(5, random_state = _seed)
     random_reviews = pd.DataFrame(random_reviews, columns = ['reviewText']).reset_index().drop(columns = ['index'])
     random_reviews['segmentedSentences'] = random_reviews['reviewText'].apply(segment_sent)
     print("5 Randomly selected reviews before and after sentence segmenetation:")
@@ -172,7 +172,7 @@ def main(data_file, seed):
             title = 'Distribution of Number of Words for Each Review', \
             x_label = "Word Count", y_label = "Review Count", countplot = False)
 
-    plot_bar_overlap(df, ['wordCount', 'stemmedWordCount'], \
+    plot_bar_overlap(df[['wordCount', 'stemmedWordCount']].clip(0, 80), ['wordCount', 'stemmedWordCount'], \
             title = 'Distribution of Number of Words for Each Review (Clipped)', \
             x_label = "Word Count", y_label = "Review Count", countplot = False)
 
