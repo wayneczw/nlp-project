@@ -173,7 +173,7 @@ def main(data_file, seed):
             title = 'Distribution of Number of Words for Each Review', \
             x_label = "Word Count", y_label = "Review Count", countplot = False)
 
-    plot_bar_overlap(df[['wordCount', 'stemmedWordCount']].clip(0, 80), ['wordCount', 'stemmedWordCount'], \
+    plot_bar_overlap(df[['wordCount', 'stemmedWordCount']].clip(0, 300), ['wordCount', 'stemmedWordCount'], \
             title = 'Distribution of Number of Words for Each Review (Clipped)', \
             x_label = "Word Count", y_label = "Review Count", countplot = False)
 

@@ -23,7 +23,7 @@ import seaborn as sns
 
 # %matplotlib inline
 plt.style.use('seaborn-whitegrid')
-params = {'figure.figsize': (20,15),
+params = {'figure.figsize': (15,12),
             'savefig.facecolor': 'white'}
 plt.rcParams.update(params)
 
@@ -186,14 +186,24 @@ def segment_sent(text, emoji_tokenizer = TweetTokenizer()):
             sentences = sentences[:-1]
     return sentences
 
-def plot_bar(number_list, title, x_label, y_label, countplot = True):
+def plot_box(aspect_score_df, x, y, title, x_label, y_label, showfliers=True):
     sns.set(font_scale = 1.5)
+    fig = sns.boxplot(x=x, y=y, data=aspect_score_df, showfliers=showfliers)
 
-    if countplot:
-        fig = sns.countplot(number_list, color = 'c')
-    else:
-        fig = sns.distplot(number_list, color = 'c', kde = False)
+    plt.title(title, loc = 'center', y=1.08, fontsize = 30)
+    fig.set(ylim=(0, 5))
+    fig.set_xlabel(x_label)
+    fig.set_ylabel(y_label)
+    plt.tight_layout()
+    saved_path = os.path.join(IMAGES_DIRECTORY, title.lower().replace(' ', '_'))
+    fig.get_figure().savefig(saved_path, dpi=200, bbox_inches="tight")
+    print('Saved ' + saved_path)
+    plt.close()
 
+def plot_aspect_scores(score_df, x, y, title, x_label, y_label):
+    sns.set(font_scale = 1.5)
+    fig = sns.barplot(x="aspect", y="score", data=df_)
+    fig.set(ylim=(0, 5))
     plt.title(title, loc = 'center', y=1.08, fontsize = 30)
     fig.set_xlabel(x_label)
     fig.set_ylabel(y_label)
@@ -203,67 +213,6 @@ def plot_bar(number_list, title, x_label, y_label, countplot = True):
     print('Saved ' + saved_path)
     plt.close()
 
-def plot_bar_overlap(df, columns, title, x_label, y_label, countplot = True):
-    sns.set(font_scale = 1.5)
-
-    fig, ax = plt.subplots()
-    for col in columns:
-        if countplot:
-            sns.countplot(df[col], ax=ax, label = col)
-        else:
-            sns.distplot(df[col], ax=ax, kde=False, label = col)
-
-    plt.legend(loc='upper right')
-    plt.title(title, loc = 'center', y=1.08, fontsize = 30)
-    ax.set_xlabel(x_label)
-    ax.set_ylabel(y_label)
-    saved_path = os.path.join(IMAGES_DIRECTORY, title.lower().replace(' ', '_'))
-    fig.savefig(saved_path, dpi=200, bbox_inches="tight")
-    print('Saved ' + saved_path)
-    plt.close()
-
-def plot_bar(aspect_score_df, title, x_label, y_label, showfliers=True):
-    sns.set(font_scale = 1.5)
-    fig = sns.boxplot(x="aspect", y="score", data=aspect_score_df, showfliers=showfliers)
-
-    plt.title(title, loc = 'center', y=1.08, fontsize = 30)
-    fig.set_xlabel(x_label)
-    fig.set_ylabel(y_label)
-    plt.tight_layout()
-    saved_path = os.path.join(IMAGES_DIRECTORY, title.lower().replace(' ', '_'))
-    fig.get_figure().savefig(saved_path, dpi=200, bbox_inches="tight")
-    print('Saved ' + saved_path)
-    plt.close()
-
-def extract_NP(posTagged):
-    grammar = r"""
-
-        ADJ:
-            {<RB.*>? <JJ.* | VBG>}
-
-        ADJLIST:
-            {<ADJ> (<CC>? <,>? <ADJ>)*}
-
-        ADJNOUN:
-            {<ADJLIST>? <NN.*>+}
-
-        PREFIXEDNOUN:
-            {<DT|PRP\$>? (<ADJNOUN> <POS>)* <ADJNOUN>}
-
-        PP:
-            {<IN><PREFIXEDNOUN>}
-
-        NP:
-            {<PREFIXEDNOUN> (<PP>)*}
-            {<PRP>}
-
-        """
-    chunker = RegexpParser(grammar)
-    ne = []
-    chunk = chunker.parse(posTagged)
-    for tree in chunk.subtrees(filter=lambda t: t.label() == 'NP'):
-        ne.append(' '.join([child[0] for child in tree.leaves()]))
-    return ne
 
 
 
@@ -276,8 +225,13 @@ with open(data_path) as f:
 df = pd.DataFrame.from_dict(data)
 df = df.drop(columns = ['overall', 'reviewTime', 'summary', 'unixReviewTime'])
 
-iac_df = pd.read_csv('implicit_aspect_corpus.csv')
-aspects = list(iac_df['aspect'].unique())
+implicit_aspect_polarity_df = pd.read_csv('implicit_aspect_polarity.csv')
+aspects = list(implicit_aspect_polarity_df['aspect'].unique())
+from sklearn.preprocessing import MinMaxScaler
+scaler = MinMaxScaler()
+implicit_aspect_polarity_df['polarity_intense_scaled'] = scaler.fit_transform(implicit_aspect_polarity_df[['polarity_intense']]) * 5
+implicit_aspect_polarity_df[implicit_aspect_polarity_df['aspect'] == 'quality']
+implicit_aspect_polarity_df['aspect'].unique()
 
 df['asin'].value_counts().head()
 # B005SUHPO6    836
@@ -295,32 +249,71 @@ df['tokens'] = df['tokenizedSentences'].apply(flatten)
 df['words'] = df['tokens'].apply(lambda tokens: [token.lower() for token in tokens])
 df['words'] = df['words'].apply(lambda tokens: [token for token in tokens if is_word(token)])
 
-# aspect = 'performance'
-# df[df['words'].apply(lambda words: True if aspect in words else False)][['sentences']]
-# df = df[df['words'].apply(lambda words: True if aspect in words else False)].iloc[-2:-1]
-# df[['sentences']]
-#
-# product_df[aspects]
-# aspect_score_df
-
 for aspect in aspects:
-    df[aspect] = df['words'].apply(lambda words: [word for word in words if word in list(iac_df[iac_df['aspect'] == aspect]['implicit'])])
+    df[aspect] = df['words'].apply(lambda words: [word for word in words if word in list(implicit_aspect_polarity_df[implicit_aspect_polarity_df['aspect'] == aspect]['implicit'])])
 
 product_df = df.groupby('asin')[aspects].sum().reset_index()
 
 for aspect in aspects:
-    aspect_df = iac_df[iac_df['aspect'] == aspect]
-    aspect_dict = dict(zip(aspect_df['implicit'], aspect_df['polarity_intense']))
+    aspect_df = implicit_aspect_polarity_df[implicit_aspect_polarity_df['aspect'] == aspect]
+    aspect_dict = dict(zip(aspect_df['implicit'], aspect_df['polarity_intense_scaled']))
     product_df[aspect + '_scores'] = product_df[aspect].apply(lambda aspect: [aspect_dict[word] for word in aspect])
 
 aspect_list = []
 aspect_score_list = []
-
+aspect_word_list = []
 for aspect in aspects:
-    for score in product_df.iloc[0].to_dict()[aspect + '_scores']:
+    aspects_words = product_df.iloc[0].to_dict()[aspect]
+    aspects_scores = product_df.iloc[0].to_dict()[aspect + '_scores']
+    for i in range(len(aspects_words)):
         aspect_list.append(aspect)
-        aspect_score_list.append(score)
+        aspect_score_list.append(aspects_scores[i])
+        aspect_word_list.append(aspects_words[i])
+aspect_score_df = pd.DataFrame(data = {'aspect': aspect_list, 'word': aspect_word_list, 'score': aspect_score_list})
 
-aspect_score_df = pd.DataFrame(data = {'aspect': aspect_list, 'score': aspect_score_list})
-plot_bar(aspect_score_df, title = 'Aspect Scores for ' + productID + ' with outlier', x_label = 'aspect', y_label = 'score', showfliers=True)
-plot_bar(aspect_score_df, title = 'Aspect Scores for ' + productID , x_label = 'aspect', y_label = 'score', showfliers=False)
+score_df = aspect_score_df.groupby('aspect')['score'].mean().reset_index()
+aspect_score_df
+
+
+plot_box(aspect_score_df, 'aspect', 'score', title = 'Aspect Scores for ' + productID, x_label = 'aspect', y_label = 'score', showfliers=False)
+plot_aspect_scores(score_df, 'aspect', 'score', title = 'Aspect Scores for ' + productID, x_label = 'aspect', y_label = 'score')
+
+
+# plot_box(aspect_score_df, 'aspect', 'score', title = 'Aspect Scores for ' + productID + ' with outlier', x_label = 'aspect', y_label = 'score', showfliers=True)
+# plot_box(aspect_score_df, 'aspect', 'score', title = 'Aspect Scores for ' + productID , x_label = 'aspect', y_label = 'score', showfliers=False)
+
+# example_df = df.iloc[:1].copy()
+# # sentence = 'Very big to hold.'
+# sentence = 'The case is big and bulky'
+# example_df['reviewText'] = sentence
+#
+# example_df['sentences'] = example_df['reviewText'].apply(segment_sent)
+# example_df['tokenizedSentences'] = example_df['sentences'].apply(lambda sentences: [tokenize(sentence) for sentence in sentences])
+# example_df['tokens'] = example_df['tokenizedSentences'].apply(flatten)
+# example_df['words'] = example_df['tokens'].apply(lambda tokens: [token.lower() for token in tokens])
+# example_df['words'] = example_df['words'].apply(lambda tokens: [token for token in tokens if is_word(token)])
+#
+# for aspect in aspects:
+#     example_df[aspect] = example_df['words'].apply(lambda words: [word for word in words if word in list(implicit_aspect_polarity_df[implicit_aspect_polarity_df['aspect'] == aspect]['implicit'])])
+# product_df = example_df.groupby('asin')[aspects].sum().reset_index()
+#
+# for aspect in aspects:
+#     aspect_df = implicit_aspect_polarity_df[implicit_aspect_polarity_df['aspect'] == aspect]
+#     aspect_dict = dict(zip(aspect_df['implicit'], aspect_df['polarity_intense_scaled']))
+#     product_df[aspect + '_scores'] = product_df[aspect].apply(lambda aspect: [aspect_dict[word] for word in aspect])
+#
+# aspect_list = []
+# aspect_score_list = []
+# aspect_word_list = []
+# for aspect in aspects:
+#     aspects_words = product_df.iloc[0].to_dict()[aspect]
+#     aspects_scores = product_df.iloc[0].to_dict()[aspect + '_scores']
+#     for i in range(len(aspects_words)):
+#         aspect_list.append(aspect)
+#         aspect_score_list.append(aspects_scores[i])
+#         aspect_word_list.append(aspects_words[i])
+# aspect_score_df = pd.DataFrame(data = {'aspect': aspect_list, 'word': aspect_word_list, 'score': aspect_score_list})
+# df_ = aspect_score_df.groupby('aspect')['score'].mean().reset_index()
+#
+# fig = sns.barplot(x="aspect", y="score", data=df_)
+# fig.set(ylim=(0, 5))
