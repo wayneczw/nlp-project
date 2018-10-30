@@ -172,7 +172,7 @@ def main(data_file, seed):
             title = 'Distribution of Number of Words for Each Review', \
             x_label = "Word Count", y_label = "Review Count", countplot = False)
 
-    plot_bar_overlap(df[['wordCount', 'stemmedWordCount']].clip(0, 80), ['wordCount', 'stemmedWordCount'], \
+    plot_bar_overlap(df[['wordCount', 'stemmedWordCount']].clip(0, 300), ['wordCount', 'stemmedWordCount'], \
             title = 'Distribution of Number of Words for Each Review (Clipped)', \
             x_label = "Word Count", y_label = "Review Count", countplot = False)
 
@@ -269,22 +269,6 @@ def main(data_file, seed):
     unique_count_max = (products_np['relative1'].apply(len)).max()
     products_np['relative1'] = products_np['relative1'].apply(lambda relative1: relative1 + [''] * (unique_count_max - len(relative1)))
     print(pd.DataFrame({row['asin']: row['relative1'] for index, row in products_np.iterrows()}))
-
-
-    #     productID  \
-    # 0  B0042FV2SI
-    # 1  B005SUHPO6
-    # 2  B008OHNZI0
-    #
-    #                                                                                                                          10 Representative Noun Phrases (Abosolute)  \
-    # 0  [(it, 1127), (i, 1046), (you, 245), (they, 162), (them, 90), (my phone, 76), (the screen, 73), (me, 53), (this product, 37), (the phone, 35)]
-    # 1  [(it, 1956), (i, 1884), (you, 448), (this case, 228), (the case, 187), (the phone, 184), (they, 162), (me, 153), (my phone, 148), (he, 128)]
-    # 2  [(i, 1728), (it, 1319), (you, 464), (they, 251), (me, 126), (the screen, 125), (them, 112), (the screen protector, 73), (the protector, 58), (this product, 56)]
-    #
-    #                                                                                                                                                                                                                                                                                         10 Representative Noun Phrases (Relative)
-    # 0  [(the matte finishing, 1.0), (a deeper scratch on the protector, 1.0), (didnt stay, 1.0), (bubble free surface, 1.0), (the 30th amazing, 1.0), (lights indoors, 1.0), (using screen covers by generic for all long time, 1.0), (that well on my iphone, 1.0), (best investment for any smartphone, 1.0), (sprint 's i4s, 1.0)]
-    # 1  [(otterbox defender series hybrid case, 1.0), (its quite annoying, 1.0), (charging port keeps, 1.0), (an otterbox for my ipad, 1.0), (the line of the case, 1.0), (love thesei, 1.0), (best case for the iphone, 1.0), (is a fake, 1.0), (this casse, 1.0), (might work for others, 1.0)]
-    # 2  [(gos:, 1.0), (ta:, 1.0), (the scotch tape method, 1.0), (the high definition, 1.0), (tab number, 1.0), (the tech armor hd clear screen protector, 1.0), (the lint lifter, 1.0), (accomplishment, 1.0), (perfect screen protectors, 1.0), (the home button side, 1.0)]
 
     # Excluding single noun phrases
     print_header('Excluding single noun phrases', char = '-')
