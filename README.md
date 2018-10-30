@@ -65,7 +65,7 @@ The output for this section will be 1 terminal printout that shows the result of
 ![q1h](md_images/q1h.png)
 
 #### Q2 Development of a Noun Phrase Summarizer
-The outputs for this section will be 2 terminal printouts that show the top 20 frequent Noun Phrases, the left one including single-word phrases, and the right one excluding single-word phrases:
+The outputs for this section will be 2 terminal printouts that show the top 20 frequent Noun Phrases, the top one including single-word phrases, and the bottom one excluding single-word phrases:
 
 ![q2a](md_images/q2a.png)
 
