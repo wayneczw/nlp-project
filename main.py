@@ -20,6 +20,7 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 # %matplotlib inline
 plt.style.use('seaborn-whitegrid')
