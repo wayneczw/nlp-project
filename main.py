@@ -113,6 +113,15 @@ def main(data_file, seed):
             title = 'Distribution of Number of Sentences for Each Review (Clipped)', \
             x_label = "Sentence Count (Clipped)", y_label = "Review Count", countplot = True)
 
+    # get 5 random reviews to do sentence segmentation and display results
+    reviews = df['reviewText']
+    _seed = 43 # To give us an interesting result
+    random_reviews = reviews.sample(5, random_state = _seed) 
+    random_reviews = pd.DataFrame(random_reviews, columns = ['reviewText']).reset_index().drop(columns = ['index'])
+    random_reviews['segmentedSentences'] = random_reviews['reviewText'].apply(segment_sent)
+    print("5 Randomly selected reviews before and after sentence segmenetation:")
+    print(random_reviews)
+
     ## 3.2.3 Tokenization and Stemming
     print_header('3.2.3 Tokenization and Stemming', 50)
 
@@ -148,7 +157,7 @@ def main(data_file, seed):
     ### With Stemming
     print_header('With Stemming', char = '-')
     stemmer = SnowballStemmer("english")
-    df['stemmedWords'] = df['words'].apply(lambda tokens: [stemmer.stem(token) for token in tokens]).apply(set)
+    df['stemmedWords'] = df['words'].apply(lambda tokens: [stemmer.stem(token) for token in tokens])
     df['uniqueStemmedWords'] = df['stemmedWords'].apply(set)
     df['stemmedWordCount'] = df['uniqueStemmedWords'].apply(len)
 
@@ -787,5 +796,4 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--seed', type = int, metavar = '<seed>',
         required = False, help = 'Seed to be used for pseudo randomisations', default = DEFAULT_SEED)
     args = parser.parse_args()
-
     main(args.data, args.seed)
