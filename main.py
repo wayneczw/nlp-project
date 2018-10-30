@@ -239,131 +239,140 @@ def main(data_file, seed):
     # 18  something     8165
     # 19  a bit         8038
 
-
-    noun_phrases_count_map = noun_phrases.set_index('Noun Phrase').to_dict()['Count']
-
     products = df['asin'].value_counts().head(3).index
-    products_np = df[df['asin'].isin(products)][['asin', 'nounPhrases']].groupby(['asin']).sum().reset_index()
-    products_np['NPCounts'] = products_np['nounPhrases'].apply(lambda noun_phrases: Counter(noun_phrases).most_common())
-
-    # Absolute Count
-    products_np['abosoluteTop10'] = products_np['NPCounts'].apply(lambda NPCounts: NPCounts[:10])
-
-    # Relative counts
-    products_np['relativeNPFrequency'] = products_np['NPCounts'].apply(lambda NPCounts: [(NPCount[0], NPCount[1]/noun_phrases_count_map[NPCount[0]]) for NPCount in NPCounts])
-    products_np['relativeNPFrequency'].apply(lambda relativeNPFrequency: relativeNPFrequency.sort(key=lambda elem: elem[1], reverse=True))
-    products_np['relativeTop10'] = products_np['relativeNPFrequency'].apply(lambda relativeNPFrequency: relativeNPFrequency[:10])
-    products_np['relative1'] = products_np['relativeNPFrequency'].apply(lambda relativeNPFrequency: [word for word in relativeNPFrequency if word[1] == 1])
-
-    product_representative_NPs = products_np[['asin', 'abosoluteTop10', 'relativeTop10', 'relative1']].rename(columns = {'asin': 'productID', 'abosoluteTop10': '10 Representative Noun Phrases (Abosolute)', 'relativeTop10': '10 Representative Noun Phrases (Relative)', 'relative1': 'Representative Noun Phrases (Unique)'})
-
-    print_header('10 Representative Noun Phrases for 3 Popular Products (Including single noun phrases)', char = '-')
-
-    print_header('Abosolute', char = '-')
-    print(pd.DataFrame({row['asin']: row['abosoluteTop10'] for index, row in products_np.iterrows()}))
-
-    print_header('Relative', char = '-')
-    print(pd.DataFrame({row['asin']: row['relativeTop10'] for index, row in products_np.iterrows()}))
-
-    print_header('Unique', char = '-')
-    unique_count_max = (products_np['relative1'].apply(len)).max()
-    products_np['relative1'] = products_np['relative1'].apply(lambda relative1: relative1 + [''] * (unique_count_max - len(relative1)))
-    print(pd.DataFrame({row['asin']: row['relative1'] for index, row in products_np.iterrows()}))
+    products_np_top1 = df[df['asin']== products[0]]
+    products_np_top2 = df[df['asin']== products[1]]
+    products_np_top3 = df[df['asin']== products[2]]
+  
+    print_representative_np(products_np_top1, product=products[0], n=30)
+    print_representative_np(products_np_top2, product=products[1], n=30)
+    print_representative_np(products_np_top3, product=products[2], n=30)
 
 
-    #     productID  \
-    # 0  B0042FV2SI
-    # 1  B005SUHPO6
-    # 2  B008OHNZI0
-    #
-    #                                                                                                                          10 Representative Noun Phrases (Abosolute)  \
-    # 0  [(it, 1127), (i, 1046), (you, 245), (they, 162), (them, 90), (my phone, 76), (the screen, 73), (me, 53), (this product, 37), (the phone, 35)]
-    # 1  [(it, 1956), (i, 1884), (you, 448), (this case, 228), (the case, 187), (the phone, 184), (they, 162), (me, 153), (my phone, 148), (he, 128)]
-    # 2  [(i, 1728), (it, 1319), (you, 464), (they, 251), (me, 126), (the screen, 125), (them, 112), (the screen protector, 73), (the protector, 58), (this product, 56)]
-    #
-    #                                                                                                                                                                                                                                                                                         10 Representative Noun Phrases (Relative)
-    # 0  [(the matte finishing, 1.0), (a deeper scratch on the protector, 1.0), (didnt stay, 1.0), (bubble free surface, 1.0), (the 30th amazing, 1.0), (lights indoors, 1.0), (using screen covers by generic for all long time, 1.0), (that well on my iphone, 1.0), (best investment for any smartphone, 1.0), (sprint 's i4s, 1.0)]
-    # 1  [(otterbox defender series hybrid case, 1.0), (its quite annoying, 1.0), (charging port keeps, 1.0), (an otterbox for my ipad, 1.0), (the line of the case, 1.0), (love thesei, 1.0), (best case for the iphone, 1.0), (is a fake, 1.0), (this casse, 1.0), (might work for others, 1.0)]
-    # 2  [(gos:, 1.0), (ta:, 1.0), (the scotch tape method, 1.0), (the high definition, 1.0), (tab number, 1.0), (the tech armor hd clear screen protector, 1.0), (the lint lifter, 1.0), (accomplishment, 1.0), (perfect screen protectors, 1.0), (the home button side, 1.0)]
+    # noun_phrases_count_map = noun_phrases.set_index('Noun Phrase').to_dict()['Count']
 
-    # Excluding single noun phrases
-    print_header('Excluding single noun phrases', char = '-')
+    # products = df['asin'].value_counts().head(3).index
+    # products_np = df[df['asin'].isin(products)][['asin', 'nounPhrases']].groupby(['asin']).sum().reset_index()
+    # products_np['NPCounts'] = products_np['nounPhrases'].apply(lambda noun_phrases: Counter(noun_phrases).most_common())
 
-    df['nounPhrasesExcludeSingle'] = df['nounPhrases'].apply(lambda noun_phrases: [noun_phrase for noun_phrase in noun_phrases if len(noun_phrase.split()) > 1])
-    noun_phrases = pd.DataFrame.from_dict(Counter(flatten(df['nounPhrasesExcludeSingle'])), orient='index').\
-                    reset_index().rename(columns = {'index': 'Noun Phrase', 0: 'Count'}).\
-                    sort_values(['Count'], ascending = False)
-    top_20_noun_phrases = noun_phrases.head(20).reset_index().drop(columns = ['index'])
+    # # Absolute Count
+    # products_np['abosoluteTop10'] = products_np['NPCounts'].apply(lambda NPCounts: NPCounts[:10])
 
-    print_header('Top 20 Noun Phrases Excluding Single Noun Phrases', char = '-')
-    print(top_20_noun_phrases)
-    #      Noun Phrase  Count
-    # 0   the phone     38242
-    # 1   the case      27750
-    # 2   this case     27186
-    # 3   my phone      24061
-    # 4   the price     11420
-    # 5   this product  10920
-    # 6   your phone    10012
-    # 7   the screen    9802
-    # 8   the battery   8408
-    # 9   my iphone     8359
-    # 10  a bit         8038
-    # 11  the iphone    6440
-    # 12  this phone    5796
-    # 13  a lot         5680
-    # 14  the charger   5346
-    # 15  the way       5158
-    # 16  the device    4873
-    # 17  the time      4468
-    # 18  the product   4451
-    # 19  a case        4145
+    # # Relative counts
+    # products_np['relativeNPFrequency'] = products_np['NPCounts'].apply(lambda NPCounts: [(NPCount[0], NPCount[1]/noun_phrases_count_map[NPCount[0]]) for NPCount in NPCounts])
+    # products_np['relativeNPFrequency'].apply(lambda relativeNPFrequency: relativeNPFrequency.sort(key=lambda elem: elem[1], reverse=True))
+    # products_np['relativeTop10'] = products_np['relativeNPFrequency'].apply(lambda relativeNPFrequency: relativeNPFrequency[:10])
+    # products_np['relative1'] = products_np['relativeNPFrequency'].apply(lambda relativeNPFrequency: [word for word in relativeNPFrequency if word[1] == 1])
 
-    noun_phrases_count_map = noun_phrases.set_index('Noun Phrase').to_dict()['Count']
-    products = df['asin'].value_counts().head(3).index
-    products_np = df[df['asin'].isin(products)][['asin', 'nounPhrasesExcludeSingle']].groupby(['asin']).sum().reset_index()
-    products_np['NPCountsExcludeSingle'] = products_np['nounPhrasesExcludeSingle'].apply(lambda noun_phrases: Counter(noun_phrases).most_common())
+    # product_representative_NPs = products_np[['asin', 'abosoluteTop10', 'relativeTop10', 'relative1']].rename(columns = {'asin': 'productID', 'abosoluteTop10': '10 Representative Noun Phrases (Abosolute)', 'relativeTop10': '10 Representative Noun Phrases (Relative)', 'relative1': 'Representative Noun Phrases (Unique)'})
 
-    # Absolute Count
-    products_np['abosoluteTop10ExcludeSingle'] = products_np['NPCountsExcludeSingle'].apply(lambda NPCounts: NPCounts[:10])
+    # print_header('10 Representative Noun Phrases for 3 Popular Products (Including single noun phrases)', char = '-')
 
-    # Relative counts
-    products_np['relativeNPFrequencyExcludeSingle'] = products_np['NPCountsExcludeSingle'].apply(lambda NPCounts: [(NPCount[0], NPCount[1]/noun_phrases_count_map[NPCount[0]]) for NPCount in NPCounts])
-    products_np['relativeNPFrequencyExcludeSingle'].apply(lambda relativeNPFrequency: relativeNPFrequency.sort(key=lambda elem: elem[1], reverse=True))
-    products_np['relativeTop10ExcludeSingle'] = products_np['relativeNPFrequencyExcludeSingle'].apply(lambda relativeNPFrequency: relativeNPFrequency[:10])
-    products_np['relative1ExcludeSingle'] = products_np['relativeNPFrequencyExcludeSingle'].apply(lambda relativeNPFrequency: [word for word in relativeNPFrequency if word[1] == 1])
+    # print_header('Abosolute', char = '-')
+    # print(pd.DataFrame({row['asin']: row['abosoluteTop10'] for index, row in products_np.iterrows()}))
 
-    product_representative_NPs = products_np[['asin', 'abosoluteTop10ExcludeSingle', 'relativeTop10ExcludeSingle', 'relative1ExcludeSingle']]\
-        .rename(columns = {'asin': 'productID', 'abosoluteTop10ExcludeSingle': '10 Representative Noun Phrases (Abosolute)', 'relativeTop10ExcludeSingle': '10 Representative Noun Phrases (Relative)', 'relative1ExcludeSingle': 'Representative Noun Phrases (Unique)'})
+    # print_header('Relative', char = '-')
+    # print(pd.DataFrame({row['asin']: row['relativeTop10'] for index, row in products_np.iterrows()}))
 
-    print_header('10 Representative Noun Phrases for 3 Popular Products (Excluding single noun phrases)', char = '-')
+    # print_header('Unique', char = '-')
+    # unique_count_max = (products_np['relative1'].apply(len)).max()
+    # products_np['relative1'] = products_np['relative1'].apply(lambda relative1: relative1 + [''] * (unique_count_max - len(relative1)))
+    # print(pd.DataFrame({row['asin']: row['relative1'] for index, row in products_np.iterrows()}))
 
-    print_header('Abosolute', char = '-')
-    print(pd.DataFrame({row['asin']: row['abosoluteTop10ExcludeSingle'] for index, row in products_np.iterrows()}))
 
-    #     B0042FV2SI                   B005SUHPO6              B008OHNZI0
-    # 0  (my phone, 76)               (this case, 228)        (the screen, 125)
-    # 1  (the screen, 73)             (the case, 187)         (the screen protector, 73)
-    # 2  (this product, 37)           (the phone, 184)        (the protector, 58)
-    # 3  (the phone, 35)              (my phone, 148)         (this product, 56)
-    # 4  (the price, 30)              (your phone, 72)        (tech armor, 53)
-    # 5  (this screen protector, 28)  (my iphone, 55)         (the phone, 52)
-    # 6  (the screen protector, 24)   (the iphone, 48)        (my iphone, 50)
-    # 7  (my iphone, 24)              (this product, 47)      (my phone, 47)
-    # 8  (the matte finish, 23)       (the price, 42)         (no bubbles, 45)
-    # 9  (the product, 23)            (the color, 37)         (the price, 44)
+    # #     productID  \
+    # # 0  B0042FV2SI
+    # # 1  B005SUHPO6
+    # # 2  B008OHNZI0
+    # #
+    # #                                                                                                                          10 Representative Noun Phrases (Abosolute)  \
+    # # 0  [(it, 1127), (i, 1046), (you, 245), (they, 162), (them, 90), (my phone, 76), (the screen, 73), (me, 53), (this product, 37), (the phone, 35)]
+    # # 1  [(it, 1956), (i, 1884), (you, 448), (this case, 228), (the case, 187), (the phone, 184), (they, 162), (me, 153), (my phone, 148), (he, 128)]
+    # # 2  [(i, 1728), (it, 1319), (you, 464), (they, 251), (me, 126), (the screen, 125), (them, 112), (the screen protector, 73), (the protector, 58), (this product, 56)]
+    # #
+    # #                                                                                                                                                                                                                                                                                         10 Representative Noun Phrases (Relative)
+    # # 0  [(the matte finishing, 1.0), (a deeper scratch on the protector, 1.0), (didnt stay, 1.0), (bubble free surface, 1.0), (the 30th amazing, 1.0), (lights indoors, 1.0), (using screen covers by generic for all long time, 1.0), (that well on my iphone, 1.0), (best investment for any smartphone, 1.0), (sprint 's i4s, 1.0)]
+    # # 1  [(otterbox defender series hybrid case, 1.0), (its quite annoying, 1.0), (charging port keeps, 1.0), (an otterbox for my ipad, 1.0), (the line of the case, 1.0), (love thesei, 1.0), (best case for the iphone, 1.0), (is a fake, 1.0), (this casse, 1.0), (might work for others, 1.0)]
+    # # 2  [(gos:, 1.0), (ta:, 1.0), (the scotch tape method, 1.0), (the high definition, 1.0), (tab number, 1.0), (the tech armor hd clear screen protector, 1.0), (the lint lifter, 1.0), (accomplishment, 1.0), (perfect screen protectors, 1.0), (the home button side, 1.0)]
 
-    print_header('Relative', char = '-')
-    print(pd.DataFrame({row['asin']: row['relativeTop10ExcludeSingle'] for index, row in products_np.iterrows()}))
+    # # Excluding single noun phrases
+    # print_header('Excluding single noun phrases', char = '-')
 
-    print_header('Unique', char = '-')
-    unique_count_max = (products_np['relative1ExcludeSingle'].apply(len)).max()
-    products_np['relative1ExcludeSingle'] = products_np['relative1ExcludeSingle'].apply(lambda relative1: relative1 + [''] * (unique_count_max - len(relative1)))
-    print(pd.DataFrame({row['asin']: row['relative1ExcludeSingle'] for index, row in products_np.iterrows()}))
+    # df['nounPhrasesExcludeSingle'] = df['nounPhrases'].apply(lambda noun_phrases: [noun_phrase for noun_phrase in noun_phrases if len(noun_phrase.split()) > 1])
+    # noun_phrases = pd.DataFrame.from_dict(Counter(flatten(df['nounPhrasesExcludeSingle'])), orient='index').\
+    #                 reset_index().rename(columns = {'index': 'Noun Phrase', 0: 'Count'}).\
+    #                 sort_values(['Count'], ascending = False)
+    # top_20_noun_phrases = noun_phrases.head(20).reset_index().drop(columns = ['index'])
 
-    # 0  [(the matte finishing, 1.0), (didnt stay, 1.0), (a deeper scratch on the protector, 1.0), (bubble free surface, 1.0), (the 30th amazing, 1.0), (lights indoors, 1.0), (using screen covers by generic for all long time, 1.0), (a clean microfiber cloth/eyeglass cloth, 1.0), (that well on my iphone, 1.0), (best investment for any smartphone, 1.0)]
-    # 1  [(otterbox defender series hybrid case, 1.0), (its quite annoying, 1.0), (charging port keeps, 1.0), (an otterbox for my ipad, 1.0), (the line of the case, 1.0), (love thesei, 1.0), (best case for the iphone, 1.0), (is a fake, 1.0), (this casse, 1.0), (might work for others, 1.0)]
-    # 2  [(the scotch tape method, 1.0), (the high definition, 1.0), (tab number, 1.0), (the tech armor hd clear screen protector, 1.0), (the home button side, 1.0), (the lint lifter, 1.0), (perfect screen protectors, 1.0), (hate fingerprints, 1.0), (retinashield screen protector, 1.0), (vs personal phone, 1.0)]
+    # print_header('Top 20 Noun Phrases Excluding Single Noun Phrases', char = '-')
+    # print(top_20_noun_phrases)
+    # #      Noun Phrase  Count
+    # # 0   the phone     38242
+    # # 1   the case      27750
+    # # 2   this case     27186
+    # # 3   my phone      24061
+    # # 4   the price     11420
+    # # 5   this product  10920
+    # # 6   your phone    10012
+    # # 7   the screen    9802
+    # # 8   the battery   8408
+    # # 9   my iphone     8359
+    # # 10  a bit         8038
+    # # 11  the iphone    6440
+    # # 12  this phone    5796
+    # # 13  a lot         5680
+    # # 14  the charger   5346
+    # # 15  the way       5158
+    # # 16  the device    4873
+    # # 17  the time      4468
+    # # 18  the product   4451
+    # # 19  a case        4145
+
+    # noun_phrases_count_map = noun_phrases.set_index('Noun Phrase').to_dict()['Count']
+    # products = df['asin'].value_counts().head(3).index
+    # products_np = df[df['asin'].isin(products)][['asin', 'nounPhrasesExcludeSingle']].groupby(['asin']).sum().reset_index()
+    # products_np['NPCountsExcludeSingle'] = products_np['nounPhrasesExcludeSingle'].apply(lambda noun_phrases: Counter(noun_phrases).most_common())
+
+    # # Absolute Count
+    # products_np['abosoluteTop10ExcludeSingle'] = products_np['NPCountsExcludeSingle'].apply(lambda NPCounts: NPCounts[:10])
+
+    # # Relative counts
+    # products_np['relativeNPFrequencyExcludeSingle'] = products_np['NPCountsExcludeSingle'].apply(lambda NPCounts: [(NPCount[0], NPCount[1]/noun_phrases_count_map[NPCount[0]]) for NPCount in NPCounts])
+    # products_np['relativeNPFrequencyExcludeSingle'].apply(lambda relativeNPFrequency: relativeNPFrequency.sort(key=lambda elem: elem[1], reverse=True))
+    # products_np['relativeTop10ExcludeSingle'] = products_np['relativeNPFrequencyExcludeSingle'].apply(lambda relativeNPFrequency: relativeNPFrequency[:10])
+    # products_np['relative1ExcludeSingle'] = products_np['relativeNPFrequencyExcludeSingle'].apply(lambda relativeNPFrequency: [word for word in relativeNPFrequency if word[1] == 1])
+
+    # product_representative_NPs = products_np[['asin', 'abosoluteTop10ExcludeSingle', 'relativeTop10ExcludeSingle', 'relative1ExcludeSingle']]\
+    #     .rename(columns = {'asin': 'productID', 'abosoluteTop10ExcludeSingle': '10 Representative Noun Phrases (Abosolute)', 'relativeTop10ExcludeSingle': '10 Representative Noun Phrases (Relative)', 'relative1ExcludeSingle': 'Representative Noun Phrases (Unique)'})
+
+    # print_header('10 Representative Noun Phrases for 3 Popular Products (Excluding single noun phrases)', char = '-')
+
+    # print_header('Abosolute', char = '-')
+    # print(pd.DataFrame({row['asin']: row['abosoluteTop10ExcludeSingle'] for index, row in products_np.iterrows()}))
+
+    # #     B0042FV2SI                   B005SUHPO6              B008OHNZI0
+    # # 0  (my phone, 76)               (this case, 228)        (the screen, 125)
+    # # 1  (the screen, 73)             (the case, 187)         (the screen protector, 73)
+    # # 2  (this product, 37)           (the phone, 184)        (the protector, 58)
+    # # 3  (the phone, 35)              (my phone, 148)         (this product, 56)
+    # # 4  (the price, 30)              (your phone, 72)        (tech armor, 53)
+    # # 5  (this screen protector, 28)  (my iphone, 55)         (the phone, 52)
+    # # 6  (the screen protector, 24)   (the iphone, 48)        (my iphone, 50)
+    # # 7  (my iphone, 24)              (this product, 47)      (my phone, 47)
+    # # 8  (the matte finish, 23)       (the price, 42)         (no bubbles, 45)
+    # # 9  (the product, 23)            (the color, 37)         (the price, 44)
+
+    # print_header('Relative', char = '-')
+    # print(pd.DataFrame({row['asin']: row['relativeTop10ExcludeSingle'] for index, row in products_np.iterrows()}))
+
+    # print_header('Unique', char = '-')
+    # unique_count_max = (products_np['relative1ExcludeSingle'].apply(len)).max()
+    # products_np['relative1ExcludeSingle'] = products_np['relative1ExcludeSingle'].apply(lambda relative1: relative1 + [''] * (unique_count_max - len(relative1)))
+    # print(pd.DataFrame({row['asin']: row['relative1ExcludeSingle'] for index, row in products_np.iterrows()}))
+
+    # # 0  [(the matte finishing, 1.0), (didnt stay, 1.0), (a deeper scratch on the protector, 1.0), (bubble free surface, 1.0), (the 30th amazing, 1.0), (lights indoors, 1.0), (using screen covers by generic for all long time, 1.0), (a clean microfiber cloth/eyeglass cloth, 1.0), (that well on my iphone, 1.0), (best investment for any smartphone, 1.0)]
+    # # 1  [(otterbox defender series hybrid case, 1.0), (its quite annoying, 1.0), (charging port keeps, 1.0), (an otterbox for my ipad, 1.0), (the line of the case, 1.0), (love thesei, 1.0), (best case for the iphone, 1.0), (is a fake, 1.0), (this casse, 1.0), (might work for others, 1.0)]
+    # # 2  [(the scotch tape method, 1.0), (the high definition, 1.0), (tab number, 1.0), (the tech armor hd clear screen protector, 1.0), (the home button side, 1.0), (the lint lifter, 1.0), (perfect screen protectors, 1.0), (hate fingerprints, 1.0), (retinashield screen protector, 1.0), (vs personal phone, 1.0)]
 
 
     random_5_reviews = df[['reviewText', 'posTagged', 'nounPhrases']].sample(5, random_state = seed)
@@ -464,6 +473,31 @@ class ReviewTokenizer(TreebankWordTokenizer):
                 text = text[:pos] + ' ' + text[pos:]
 
         return text.split()
+#end class
+
+
+def print_representative_np(df, product, n=50):
+    def _identity_tokenizer(text):
+        return text
+
+    tfidf = TfidfVectorizer(tokenizer=_identity_tokenizer, stop_words='english', lowercase=False)    
+    try:
+        result = tfidf.fit_transform(df['nounPhrases'])
+    except Exception as e:
+        df['posTagged'] = df['tokenizedSentences'].apply(lambda tokenizedSentences: [pos_tag(sentence) for sentence in tokenizedSentences])
+        df['nounPhrases'] = df['posTagged'].apply(lambda posTagged: [np.lower() for np in flatten([extract_NP(tag) for tag in posTagged])])
+        result = tfidf.fit_transform(df['nounPhrases'])
+
+    scores = zip(tfidf.get_feature_names(),
+                 np.asarray(result.sum(axis=0)).ravel())
+    sorted_scores = sorted(scores, key=lambda x: x[1], reverse=True)
+    print('='*30 + product + '='*30)
+    for item in sorted_scores[:n]:
+        print("{0:50} Score: {1}".format(item[0], item[1]))
+    print()
+    print()
+#end def
+
 
 def tokenize(sentence, word_tokenizer = ReviewTokenizer(), stemmer = None, lower = False, remove_punc = False, remove_stopwords = False, remove_emoji = False, convert_neg = False):
 
