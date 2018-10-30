@@ -21,9 +21,9 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-%matplotlib inline
+# %matplotlib inline
 plt.style.use('seaborn-whitegrid')
-params = {'figure.figsize': (15,8),
+params = {'figure.figsize': (15,12),
             'savefig.facecolor': 'white'}
 plt.rcParams.update(params)
 
@@ -191,6 +191,7 @@ def plot_box(aspect_score_df, x, y, title, x_label, y_label, showfliers=True):
     fig = sns.boxplot(x=x, y=y, data=aspect_score_df, showfliers=showfliers)
 
     plt.title(title, loc = 'center', y=1.08, fontsize = 30)
+    fig.set(ylim=(0, 5))
     fig.set_xlabel(x_label)
     fig.set_ylabel(y_label)
     plt.tight_layout()
@@ -212,37 +213,6 @@ def plot_aspect_scores(score_df, x, y, title, x_label, y_label):
     print('Saved ' + saved_path)
     plt.close()
 
-
-
-def extract_NP(posTagged):
-    grammar = r"""
-
-        ADJ:
-            {<RB.*>? <JJ.* | VBG>}
-
-        ADJLIST:
-            {<ADJ> (<CC>? <,>? <ADJ>)*}
-
-        ADJNOUN:
-            {<ADJLIST>? <NN.*>+}
-
-        PREFIXEDNOUN:
-            {<DT|PRP\$>? (<ADJNOUN> <POS>)* <ADJNOUN>}
-
-        PP:
-            {<IN><PREFIXEDNOUN>}
-
-        NP:
-            {<PREFIXEDNOUN> (<PP>)*}
-            {<PRP>}
-
-        """
-    chunker = RegexpParser(grammar)
-    ne = []
-    chunk = chunker.parse(posTagged)
-    for tree in chunk.subtrees(filter=lambda t: t.label() == 'NP'):
-        ne.append(' '.join([child[0] for child in tree.leaves()]))
-    return ne
 
 
 
@@ -302,7 +272,10 @@ for aspect in aspects:
 aspect_score_df = pd.DataFrame(data = {'aspect': aspect_list, 'word': aspect_word_list, 'score': aspect_score_list})
 
 score_df = aspect_score_df.groupby('aspect')['score'].mean().reset_index()
+aspect_score_df
 
+
+plot_box(aspect_score_df, 'aspect', 'score', title = 'Aspect Scores for ' + productID, x_label = 'aspect', y_label = 'score', showfliers=False)
 plot_aspect_scores(score_df, 'aspect', 'score', title = 'Aspect Scores for ' + productID, x_label = 'aspect', y_label = 'score')
 
 

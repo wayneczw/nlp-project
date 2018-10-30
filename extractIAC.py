@@ -45,6 +45,6 @@ iac_df = pd.DataFrame(data = {'aspect': aspects, 'implicit': implicits})
 sent_df = pd.read_csv('rep_words/ns_nn.csv')
 sent_df.columns = ['implicit', 'polarity_intense']
 
-iac_polarity_df = iac_df.merge(sent_df, on = 'implicit', how = 'inner')
+iac_polarity_df = iac_df.merge(sent_df, how = 'inner')
 
 iac_polarity_df.to_csv('implicit_aspect_polarity.csv', index = False)
