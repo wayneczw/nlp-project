@@ -16,6 +16,71 @@ After which, simply install all the required python modules via
     pip install -r requirements.txt
 (here I'm just putting some of the commonly used modules here, there are lots more out there)
 
+# Packages/Libraries used for this project
+## pandas
+We use pandas as the Data structure to hold the product review dataset. Specifically, we load in the Json product review dataset into a Pandas Dataframe code:
+
+![pandas](md_images/pandas.png)
+
+The variable ‘df’ is a Pandas Dataframe that would contain information of  all the reviews in a tabular format. The columns in ‘df’ will correspond to the different attributes in a product review. The rows in ‘df’ will correspond to the different product reviews.
+
+Using Pandas library’s Dataframe object is ideal in handling the tasks in this assignment because we are able to apply built-in Pandas functions such as counting unique items, and automatically sort them according to the counts of unique items. 
+
+## nltk
+nltk is a great natural language toolkit that provides a comprehensive set of API that can be used for many NLP tasks.
+
+In this assignment, the following nltk API are used:
+
+#### tokenize.sent_tokenize AND tokenize.casual.EMOTICON_RE AND tokenize.TweetTokenizer
+>	We use **sent_tokenize** to do a first round of sentence segmentation.  We then apply **EMOTICON_RE**, a regular expression object imported from nltk, onto each of the segmented sentences. The reason for this is that we want to find whether a segmented sentence contains an emoticon(s), and if so, we want to further segment the sentence into two parts – a part containing the emoticon, and the other part not containing the emoticon. This is because we want to treat “This product is great :) But the product is also pretty expensive” as two separate sentences, but **sent_tokenize** will actually treat it as a single sentence. The **TweetTokenizer** will then be used to aid the sentence segmentation process, such that all emoticons will be treated as the end of the sentence. For example, *I love it <3 it's perfect* will be segmented into [*I love it <3*, *it's perfect*].
+
+
+#### tokenize.treebank.TreebankWordTokenizer AND tokenize.EMOTICON_RE AND tokenize.casual.\_replace_html_entities
+>	We customised a **ReviewTokenizer** class by extending nltk's **TreebankWordTokenizer**, which is augmented to be flexible and easy to adapt to online domains. The tokenizer uses regular expressions to conduct transformations and to tokenize text as in Penn Treebank. Certain well-known features were retained such as handling of quoted strings and splitting of commonly used contractions like “don’t” into “do n’t”.  Although robust, preliminary results show that the TreebankWordTokenizer fails to tokenize emoticons correctly due to conflicts arising from the parsing of punctuations as separate tokens. This easily inflated the average number of tokens per sentence as it was reading emojis as multiple punctuations i.e. “:-)” as “:”, “-” and “)”.
+
+>	The ReviewTokenizer also performs additional steps that further enhance the tokenization process. In particular, the new tokenizer fixes HTML character entities by replacing them with the parsed characters and also handles the correct tokenization of emojis as described above.
+
+
+#### corpus.stopwords
+>	We adopted the standard stopwords list from nltk, and add in slight modifications to better suit the online review texts:
+
+>	STOPWORDS = set(stopwords.words('english') + ["'ve", "'d", "'s", "one", "use", "would", "get", "also"]) - {'not', 'no', 'won', 'more', 'above', 'very', 'against', 'again'}
+
+
+#### stem.snowball.SnowballStemmer
+>	**SnowballStemmer** is chosen instead of Porter Stemmer, because Snowball Stemmer, which is also called Porter 2, is an improved version of the latter and has faster computation time and more reliable results.
+
+
+#### pos_tag
+>	**pos_tag** is a very convenient tool provided by nltk, such that we can use it to do pos tagging on the online review texts.
+
+
+#### RegexpParser
+>	To identify and extract noun phrases from all reviews, A noun phrase detector is developed with **RegexpParser**, which is a grammar based chunk parser. A set of regular expression patterns are used to specify the rules of the parser. The parsing is based on the POS tagging results with **pos_tag** function on the full dataset which has been tokenized with our our tokenizer.
+
+
+#### corpus.wordnet
+>	**wordnet** is used to help us build the aspect sentiment analysis application (which rely heavily on IAC, refer to below for description on IAC), whereby the synonyms and antonyms are retrieved to increase the support of sentiment tokens in each online review, so that more accurate aspect analysis can be given.
+
+
+## Implicit Aspect Clues (IAC)
+>	We adopted and implemented the methodology from works of (Poria)[https://pdfs.semanticscholar.org/7dec/03bcf97f2440e4178f574aa5dcc8b7bee7e8.pdf] and focuses on extracting the implicit aspect clue (IAC) of the reviews.
+
+>	At the same time, we have also tapped on the implicit aspect corpus developed by (Cruz-Garcia et al)[http://sentic.net/aspect-parser.pdf], where IACs are indicated and manually labeled by their corresponding aspect categories.
+
+
+## sklearn
+#### feature_extraction.text.TfidfVectorizer
+>	We are tasked to find out the top 10 representative noun phrases for each of the top 3 frequent products, and **TfidfVectorizer** is used to help us compute the representative score.
+
+
+
+## pyplot
+pyplot provides a MATLAB-like plotting framework. We use the pyplot API to plot figures in this task
+
+
+
+
 # To run the code
 To run the code, simply cd to the directory where [main.py](./main.py) locates, and enter the following into the terminal:
 
