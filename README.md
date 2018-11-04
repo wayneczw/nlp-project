@@ -64,9 +64,9 @@ In this assignment, the following nltk API are used:
 
 
 ## Implicit Aspect Clues (IAC)
->	We adopted and implemented the methodology from works of (Poria)[https://pdfs.semanticscholar.org/7dec/03bcf97f2440e4178f574aa5dcc8b7bee7e8.pdf] and focuses on extracting the implicit aspect clue (IAC) of the reviews.
+>	We adopted and implemented the methodology from works of [Poria](https://pdfs.semanticscholar.org/7dec/03bcf97f2440e4178f574aa5dcc8b7bee7e8.pdf) and focuses on extracting the implicit aspect clue (IAC) of the reviews.
 
->	At the same time, we have also tapped on the implicit aspect corpus developed by (Cruz-Garcia et al)[http://sentic.net/aspect-parser.pdf], where IACs are indicated and manually labeled by their corresponding aspect categories.
+>	At the same time, we have also tapped on the implicit aspect corpus developed by [Cruz-Garcia et al](http://sentic.net/aspect-parser.pdf), where IACs are indicated and manually labeled by their corresponding aspect categories.
 
 
 ## sklearn
