@@ -196,6 +196,8 @@ def plot_aspect_scores(aspect_score_df, x, y, title, x_label, y_label, showflier
     fig.set_ylabel(y_label)
     plt.tight_layout()
     saved_path = os.path.join(IMAGES_DIRECTORY, title.lower().replace(' ', '_'))
+    if not os.path.exists(IMAGES_DIRECTORY):
+        os.makedirs(IMAGES_DIRECTORY)
     fig.get_figure().savefig(saved_path, dpi=200, bbox_inches="tight")
     print('{} has been saved to {}'.format(title, saved_path))
     plt.close()
