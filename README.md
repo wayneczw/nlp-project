@@ -79,16 +79,24 @@ In this assignment, the following nltk API are used:
 pyplot provides a MATLAB-like plotting framework. We use the pyplot API to plot figures in this task
 
 
+# To run the nlp application, which is designed for section 3.5 of the assignment
+TO run the code, simply cd to the directory where [aspect_extract.py](./aspect_extract.py) locates, and enter the following into the terminal:
+	
+	python aspect_extract.py
 
+After which, you will be prompted to enter a product ID, and our application will output an figure plotting the aspect sentiment scores:
+![application](md_images/application.png)
 
-# To run the code
+![apsect_score](md_images/aspect_scores_for_b005suhpo6.png)
+
+# To run the code for section 3.2 to 3.4 of the Assignment
 To run the code, simply cd to the directory where [main.py](./main.py) locates, and enter the following into the terminal:
 
 	python main.py -i data/CellPhoneReview.json
 
 This python script will run seamlessly.
 
-# Sample outputs
+### Sample outputs
 Once started running [main.py](./main.py), there will be 3 types of outputs:
 
 	1. Plots - which can be found in the folder figures.
@@ -99,6 +107,7 @@ Once started running [main.py](./main.py), there will be 3 types of outputs:
 #### Q1 Dataset Analysis
 ###### Popular Products and Frequent Reviewers
 The outputs for this section will be 1 terminal printout that shows the top 10 products by frequency:
+
 ![Q1a](md_images/Q1a.png)
 
 and 1 terminal printout that shows the top 10 reviewers by frequency:
@@ -107,6 +116,7 @@ and 1 terminal printout that shows the top 10 reviewers by frequency:
 
 ###### Sentence Segmentation
 The outputs for this section will be 1 plot that shows the distribution of segmented sentences:
+
 ![q1c](md_images/q1c.png)
 
 and 1 terminal printout showing sample segmented sentences from 2:
@@ -170,11 +180,5 @@ The outputs for this section will be 4 CSV files, whereby all of them have the f
 	money,-3181.8645
 	waste,-3525.3645
 	not,-4235.419
-
-
-#### Q4 Application
-The output for this section will be 1 box plot that shows the distribution of sentiment of different key aspects of the product:
-
-![q4](md_images/q4.jpg)
 
 
