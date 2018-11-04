@@ -186,7 +186,7 @@ def segment_sent(text, emoji_tokenizer = TweetTokenizer()):
             sentences = sentences[:-1]
     return sentences
 
-def plot_box(aspect_score_df, x, y, title, x_label, y_label, showfliers=True):
+def plot_aspect_scores(aspect_score_df, x, y, title, x_label, y_label, showfliers=True):
     sns.set(font_scale = 1.5)
     fig = sns.boxplot(x=x, y=y, data=aspect_score_df, showfliers=showfliers)
 
@@ -197,27 +197,14 @@ def plot_box(aspect_score_df, x, y, title, x_label, y_label, showfliers=True):
     plt.tight_layout()
     saved_path = os.path.join(IMAGES_DIRECTORY, title.lower().replace(' ', '_'))
     fig.get_figure().savefig(saved_path, dpi=200, bbox_inches="tight")
-    print('Saved ' + saved_path)
+    print('{} has been saved to {}'.format(title, saved_path))
     plt.close()
 
-def plot_aspect_scores(score_df, x, y, title, x_label, y_label):
-    sns.set(font_scale = 1.5)
-    fig = sns.barplot(x="aspect", y="score", data=df_)
-    fig.set(ylim=(0, 5))
-    plt.title(title, loc = 'center', y=1.08, fontsize = 30)
-    fig.set_xlabel(x_label)
-    fig.set_ylabel(y_label)
-    plt.tight_layout()
-    saved_path = os.path.join(IMAGES_DIRECTORY, title.lower().replace(' ', '_'))
-    fig.get_figure().savefig(saved_path, dpi=200, bbox_inches="tight")
-    print('Saved ' + saved_path)
-    plt.close()
-
-
+print('Thanks for using this aspects extraction application.')
+productID = input("What is the ID of the product that you want to extract aspects from?\n")
 
 
 data_path = "./data/CellPhoneReview.json"
-# data_path = "./data/sample_data.json"
 data = []
 with open(data_path) as f:
     for line in f:
@@ -225,19 +212,19 @@ with open(data_path) as f:
 df = pd.DataFrame.from_dict(data)
 df = df.drop(columns = ['overall', 'reviewTime', 'summary', 'unixReviewTime'])
 
-implicit_aspect_polarity_df = pd.read_csv('implicit_aspect_polarity.csv')
+while productID not in list(df['asin']):
+    print('Product {} cannot be found in our database. Please input a valid product ID, such as "B005SUHPO6", "B0042FV2SI", "B008OHNZI0" or "B00AYNRLFA"'.format(productID))
+    productID = input("Please enter a valid product ID.\n")
 
+
+print('Start processing Aspect Extraction for product {}.'.format(productID))
+print('Please wait for a while as this might take 2-3 min.')
+
+implicit_aspect_polarity_df = pd.read_csv('implicit_aspect_polarity.csv')
 aspects = list(implicit_aspect_polarity_df['aspect'].unique())
 from sklearn.preprocessing import MinMaxScaler
 scaler = MinMaxScaler()
 implicit_aspect_polarity_df['polarity_intense_scaled'] = scaler.fit_transform(implicit_aspect_polarity_df[['polarity_intense']]) * 5
-implicit_aspect_polarity_df[implicit_aspect_polarity_df['aspect'] == 'quality']
-implicit_aspect_polarity_df['aspect'].unique()
-
-df['asin'].value_counts().head()
-productID = 'B005SUHPO6'
-# productID = 'B0042FV2SI'
-# productID = 'B008OHNZI0'
 
 df = df[df['asin'] == productID]
 df['sentences'] = df['reviewText'].apply(segment_sent)
@@ -268,8 +255,4 @@ for aspect in aspects:
         aspect_word_list.append(aspects_words[i])
 aspect_score_df = pd.DataFrame(data = {'aspect': aspect_list, 'word': aspect_word_list, 'score': aspect_score_list})
 
-score_df = aspect_score_df.groupby('aspect')['score'].mean().reset_index()
-
-
-plot_box(aspect_score_df, 'aspect', 'score', title = 'Aspect Scores for ' + productID, x_label = 'aspect', y_label = 'score', showfliers=False)
-plot_aspect_scores(score_df, 'aspect', 'score', title = 'Aspect Scores for ' + productID, x_label = 'aspect', y_label = 'score')
+plot_aspect_scores(aspect_score_df, 'aspect', 'score', title = 'Aspect Scores for ' + productID, x_label = 'aspect', y_label = 'score', showfliers=False)
